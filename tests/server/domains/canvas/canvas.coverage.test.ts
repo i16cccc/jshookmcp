@@ -176,10 +176,12 @@ vi.mock('@server/domains/canvas/handlers/shared', () => {
 
 /** Get the fingerprintCanvas mock from the vi.mock factory. */
 function getFingerprintCanvasMock() {
+  // @ts-expect-error
   return (globalThis as Record<string, unknown>).__canvasMock['fp'] as ReturnType<typeof vi.fn>;
 }
 /** Get the resolveAdapter mock. */
 function getResolveAdapterMock() {
+  // @ts-expect-error
   return (globalThis as Record<string, unknown>).__canvasMock['ra'] as ReturnType<typeof vi.fn>;
 }
 function installDefaultFingerprintCanvasMock() {
@@ -301,8 +303,10 @@ function createMockEvidenceStore() {
  */
 function createHandlers(deps?: Partial<CanvasDomainDependencies>): CanvasToolHandlers {
   return new CanvasToolHandlers({
+    // @ts-expect-error
     pageController: deps?.pageController ?? createMockPageController(),
     debuggerManager: deps?.debuggerManager ?? createMockDebuggerManager(),
+    // @ts-expect-error
     traceRecorder: deps?.traceRecorder ?? createMockTraceRecorder(),
     evidenceStore: deps?.evidenceStore ?? createMockEvidenceStore(),
   });
@@ -912,13 +916,16 @@ describe('trace_click_to_handler coverage', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({ callFrames: [] });
 
       // Track call order
+      // @ts-expect-error
       debuggerManager.enable.mockImplementation(async () => {
         callOrder.push('enable');
         return undefined;
       });
+      // @ts-expect-error
       debuggerManager.ensureAdvancedFeatures.mockImplementation(async () => {
         callOrder.push('ensureAdvancedFeatures');
         return undefined;
@@ -931,7 +938,9 @@ describe('trace_click_to_handler coverage', () => {
         }),
         removeEventListenerBreakpoint: vi.fn().mockResolvedValue(true),
       };
+      // @ts-expect-error
       debuggerManager.getEventManager.mockReturnValue(eventManager as never);
+      // @ts-expect-error
       debuggerManager.resume.mockImplementation(async () => {
         callOrder.push('resume');
         return undefined;
@@ -955,6 +964,7 @@ describe('trace_click_to_handler coverage', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({ callFrames: [] });
 
       const eventManager = {
@@ -963,9 +973,11 @@ describe('trace_click_to_handler coverage', () => {
           return 'bp-1';
         }),
       };
+      // @ts-expect-error
       debuggerManager.getEventManager.mockReturnValue(eventManager as never);
 
       // Patch evaluate to track when dispatch happens
+      // @ts-expect-error
       pageController.evaluate.mockImplementation(async () => {
         callOrder.push('dispatch');
         return { domEventChain: ['click'], pickedNode: null, engine: 'LayaAir', engineChain: [] };
@@ -988,6 +1000,7 @@ describe('trace_click_to_handler coverage', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({ callFrames: [] });
       const handlers = createHandlers({ pageController, debuggerManager });
 
@@ -1030,6 +1043,7 @@ describe('trace_click_to_handler coverage', () => {
         }),
       } as unknown as PageController;
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({ callFrames: [] });
       const handlers = createHandlers({ pageController, debuggerManager });
 
@@ -1055,6 +1069,7 @@ describe('trace_click_to_handler coverage', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({
         callFrames: [
           {
@@ -1108,6 +1123,7 @@ describe('trace_click_to_handler coverage', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({
         callFrames: [
           { functionName: 'frame1', url: 'a.js', location: { lineNumber: 1, columnNumber: 0 } },
@@ -1137,6 +1153,7 @@ describe('trace_click_to_handler coverage', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({
         callFrames: [
           {
@@ -1183,10 +1200,12 @@ describe('trace_click_to_handler coverage', () => {
       });
       const debuggerManager = createMockDebuggerManager();
 
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockImplementation(async () => {
         callOrder.push('waitForPaused');
         return { callFrames: [] };
       });
+      // @ts-expect-error
       debuggerManager.resume.mockImplementation(async () => {
         callOrder.push('resume');
         return undefined;
@@ -1195,6 +1214,7 @@ describe('trace_click_to_handler coverage', () => {
       const eventManager = {
         setEventListenerBreakpoint: vi.fn().mockResolvedValue('bp-1'),
       };
+      // @ts-expect-error
       debuggerManager.getEventManager.mockReturnValue(eventManager as never);
 
       const handlers = createHandlers({ pageController, debuggerManager });
@@ -1214,6 +1234,7 @@ describe('trace_click_to_handler coverage', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({
         callFrames: [
           { functionName: 'handler1', url: 'a.js', location: { lineNumber: 1, columnNumber: 0 } },
@@ -1246,6 +1267,7 @@ describe('trace_click_to_handler coverage', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({ callFrames: [] });
       const evidenceStore = createMockEvidenceStore();
       const handlers = createHandlers({ pageController, debuggerManager, evidenceStore });
@@ -1271,6 +1293,7 @@ describe('trace_click_to_handler coverage', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue(undefined);
       const handlers = createHandlers({ pageController, debuggerManager });
 
@@ -1288,6 +1311,7 @@ describe('trace_click_to_handler coverage', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({ callFrames: null });
       const handlers = createHandlers({ pageController, debuggerManager });
 
@@ -1305,6 +1329,7 @@ describe('trace_click_to_handler coverage', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({ callFrames: [] });
       const handlers = createHandlers({ pageController, debuggerManager });
 
@@ -1324,6 +1349,7 @@ describe('trace_click_to_handler coverage', () => {
         engineChain: ['EventDispatcher.prototype.event', 'Container.emit'],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({ callFrames: [] });
       const handlers = createHandlers({ pageController, debuggerManager });
 
@@ -1358,6 +1384,7 @@ describe('LayaCanvasAdapter coverage', () => {
         laya2: false,
         laya3: false,
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
 
       const result = await adapter.detect(env);
@@ -1373,6 +1400,7 @@ describe('LayaCanvasAdapter coverage', () => {
         laya2: false,
         laya3: false,
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
 
       const result = await adapter.detect(env);
@@ -1383,6 +1411,7 @@ describe('LayaCanvasAdapter coverage', () => {
     it('detect() returns null when evaluate throws', async () => {
       const pageController = createMockPageController();
       pageController.evaluate = vi.fn().mockRejectedValue(new Error('CDP error'));
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
 
       const result = await adapter.detect(env);
@@ -1400,6 +1429,7 @@ describe('LayaCanvasAdapter coverage', () => {
         laya2: true,
         laya3: false,
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
 
       const result = await adapter.detect(env);
@@ -1418,6 +1448,7 @@ describe('LayaCanvasAdapter coverage', () => {
         laya2: true,
         laya3: false,
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
 
       const result = await adapter.detect(env);
@@ -1437,6 +1468,7 @@ describe('LayaCanvasAdapter coverage', () => {
         laya2: true,
         laya3: false,
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
 
       const result = await adapter.detect(env);
@@ -1458,6 +1490,7 @@ describe('LayaCanvasAdapter coverage', () => {
         laya2: true,
         laya3: false,
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
 
       const result = await adapter.detect(env);
@@ -1475,6 +1508,7 @@ describe('LayaCanvasAdapter coverage', () => {
         laya2: true,
         laya3: false,
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
 
       const result = await adapter.detect(env);
@@ -1493,6 +1527,7 @@ describe('LayaCanvasAdapter coverage', () => {
         laya2: false,
         laya3: true,
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
 
       const result = await adapter.detect(env);
@@ -1510,6 +1545,7 @@ describe('LayaCanvasAdapter coverage', () => {
         laya2: false,
         laya3: true,
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
 
       const result = await adapter.detect(env);
@@ -1530,6 +1566,7 @@ describe('LayaCanvasAdapter coverage', () => {
         completeness: 'partial',
         error: 'Laya.stage not found',
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
       const opts: DumpOpts = { maxDepth: 20 };
 
@@ -1564,6 +1601,7 @@ describe('LayaCanvasAdapter coverage', () => {
         totalNodes: 3,
         completeness: 'full',
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
       const opts: DumpOpts = {};
 
@@ -1608,6 +1646,7 @@ describe('LayaCanvasAdapter coverage', () => {
         },
         hitTestMethod: 'manual',
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
       const opts: PickOpts = { x: 100, y: 100 };
 
@@ -1626,6 +1665,7 @@ describe('LayaCanvasAdapter coverage', () => {
         coordinates: { screen: { x: 0, y: 0 }, canvas: { x: 0, y: 0 } },
         hitTestMethod: 'none',
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
       const opts: PickOpts = { x: 0, y: 0 };
 
@@ -1664,6 +1704,7 @@ describe('LayaCanvasAdapter coverage', () => {
         },
         hitTestMethod: 'engine',
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
       const opts: PickOpts = { x: 400, y: 400 };
 
@@ -1698,6 +1739,7 @@ describe('LayaCanvasAdapter coverage', () => {
         },
         hitTestMethod: 'engine',
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
       const opts: PickOpts = { x: 968, y: 268, canvasId: 'second-canvas' };
 
@@ -1719,8 +1761,10 @@ describe('LayaCanvasAdapter coverage', () => {
         .mockResolvedValueOnce(['click']);
 
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({ callFrames: [] });
 
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
 
       // Call traceClick through the adapter
@@ -1745,6 +1789,7 @@ describe('LayaCanvasAdapter coverage', () => {
         .mockResolvedValueOnce(['click']);
 
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({ callFrames: [] });
 
       const traceRecorder = {
@@ -1753,12 +1798,14 @@ describe('LayaCanvasAdapter coverage', () => {
       };
 
       const evidenceStore = createMockEvidenceStore();
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
 
       // Should not throw even if traceRecorder.start fails
       const result = await adapter.traceClick(
         env,
         { breakpointType: 'click' },
+        // @ts-expect-error
         { debuggerManager, traceRecorder, evidenceStore },
       );
 
@@ -2356,6 +2403,7 @@ describe('trace_click_to_handler error handling', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({ callFrames: [] });
       const handlers = createHandlers({ pageController, debuggerManager });
 
@@ -2376,10 +2424,13 @@ describe('trace_click_to_handler error handling', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({ callFrames: [] });
+      // @ts-expect-error
       debuggerManager.resume.mockRejectedValue(new Error('Resume failed'));
 
       const eventManager = debuggerManager.getEventManager();
+      // @ts-expect-error
       eventManager.setEventListenerBreakpoint.mockResolvedValue('bp-to-cleanup');
       eventManager.removeEventListenerBreakpoint = vi.fn().mockResolvedValue(true);
 
@@ -2402,6 +2453,7 @@ describe('trace_click_to_handler error handling', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({
         callFrames: [{ functionName: 'handler', url: 'game.js', location: { lineNumber: 1 } }],
       });
@@ -2427,6 +2479,7 @@ describe('trace_click_to_handler error handling', () => {
         engineChain: [],
       });
       const debuggerManager = createMockDebuggerManager();
+      // @ts-expect-error
       debuggerManager.waitForPaused.mockResolvedValue({
         callFrames: [
           { functionName: 'handler1', url: 'a.js', location: { lineNumber: 1 } },
@@ -2558,6 +2611,7 @@ describe('PixiJSCanvasAdapter payload builders', () => {
         totalNodes: 0,
         completeness: 'partial',
       });
+      // @ts-expect-error
       const env = createLayaEnv(pageController);
 
       const result = await pixiAdapter.dumpScene(env, {});
@@ -2759,6 +2813,7 @@ describe('canvas_scene_dump with engine-specific adapters', () => {
 
   it('returns full completeness when Laya adapter succeeds', async () => {
     const pageController = createMockPageController();
+    // @ts-expect-error
     const handlers = createHandlers({ pageController });
     getFingerprintCanvasMock().mockResolvedValueOnce(makeLayaScene('2.14.0', 5));
     mockDumpSceneCallback = async () => makeLayaDumpScene('2.14.0', 5);
@@ -2772,6 +2827,7 @@ describe('canvas_scene_dump with engine-specific adapters', () => {
 
   it('handles LayaAir 3.x scene dump', async () => {
     const pageController = createMockPageController();
+    // @ts-expect-error
     const handlers = createHandlers({ pageController });
     getFingerprintCanvasMock().mockResolvedValueOnce(makeLayaScene('3.0.0', 10));
     mockDumpSceneCallback = async () => makeLayaDumpScene('3.0.0', 10);
@@ -2786,6 +2842,7 @@ describe('canvas_scene_dump with engine-specific adapters', () => {
   describe('scene dump with PixiJS engine', () => {
     it('returns full completeness when PixiJS adapter succeeds', async () => {
       const pageController = createMockPageController();
+      // @ts-expect-error
       const handlers = createHandlers({ pageController });
       getFingerprintCanvasMock().mockResolvedValueOnce({
         hits: [{ engine: 'PixiJS', adapterId: 'pixi', version: '8.2.0' }],
@@ -2824,6 +2881,7 @@ describe('canvas_scene_dump with engine-specific adapters', () => {
   describe('scene dump with Phaser engine', () => {
     it('returns full completeness when Phaser adapter succeeds', async () => {
       const pageController = createMockPageController();
+      // @ts-expect-error
       const handlers = createHandlers({ pageController });
       getFingerprintCanvasMock().mockResolvedValueOnce({
         hits: [{ engine: 'Phaser', adapterId: 'phaser', version: '3.60.0' }],
@@ -2862,6 +2920,7 @@ describe('canvas_scene_dump with engine-specific adapters', () => {
   describe('scene dump with Cocos Creator engine', () => {
     it('returns full completeness when Cocos adapter succeeds', async () => {
       const pageController = createMockPageController();
+      // @ts-expect-error
       const handlers = createHandlers({ pageController });
       getFingerprintCanvasMock().mockResolvedValueOnce({
         hits: [{ engine: 'CocosCreator', adapterId: 'cocos', version: '3.8.0' }],
@@ -2900,6 +2959,7 @@ describe('canvas_scene_dump with engine-specific adapters', () => {
   describe('scene dump with onlyInteractive and onlyVisible filters', () => {
     it('passes onlyInteractive=true to Laya adapter', async () => {
       const pageController = createMockPageController();
+      // @ts-expect-error
       const handlers = createHandlers({ pageController });
       getFingerprintCanvasMock().mockResolvedValueOnce(makeLayaScene('2.12.0', 2));
       mockDumpSceneCallback = async () => makeLayaDumpScene('2.12.0', 2);
@@ -3051,6 +3111,7 @@ describe('canvas_pick_object_at_point highlight injection', () => {
 
     // The mocked adapter consumes one evaluate for pickAt, then one more for highlight injection.
     expect(pageController.evaluate).toHaveBeenCalledTimes(3);
+    // @ts-expect-error
     const highlightScript = pageController.evaluate.mock.calls[2]![0] as string;
     expect(highlightScript).toContain('__canvas-highlight');
     expect(highlightScript).toContain('#00ff88');

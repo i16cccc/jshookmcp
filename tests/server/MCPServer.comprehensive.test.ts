@@ -75,6 +75,7 @@ vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => {
   return {
     McpServer: class extends BaseMockMcpServer {
       constructor(...args: any[]) {
+        // @ts-expect-error
         super(...(args as any));
         mocks.mcpInstances.push(this);
       }
@@ -238,6 +239,7 @@ describe('MCPServer — additional coverage', () => {
         inputSchema: { type: 'object', properties: {} },
       };
 
+      // @ts-expect-error
       const registered = server.registerSingleTool(tool);
       expect(registered).toBeDefined();
       expect(typeof registered.remove).toBe('function');
