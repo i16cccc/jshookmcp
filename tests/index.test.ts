@@ -44,8 +44,6 @@ async function loadIndex() {
 }
 
 describe('src/index.ts entrypoint', () => {
-  // @ts-expect-error
-  let mockProcessExit: any;
   let mockProcessStdoutWrite: any;
   let processEvents: Map<string, Function>;
   let stdinEvents: Map<string, Function>;
@@ -87,7 +85,7 @@ describe('src/index.ts entrypoint', () => {
       resolveExit = resolve;
     });
 
-    mockProcessExit = vi.spyOn(process, 'exit').mockImplementation((code) => {
+    vi.spyOn(process, 'exit').mockImplementation((code) => {
       resolveExit(code as number);
       // return a promise that never resolves so execution halts like a real exit
       return new Promise(() => {}) as never;

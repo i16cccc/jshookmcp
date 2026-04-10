@@ -116,11 +116,16 @@ export const systemPhases: Phase[] = [
     group: 'compute',
     setup: [],
     tools: [
-      'asar_extract', 'asar_search',
-      'electron_attach', 'electron_inspect_app',
-      'electron_scan_userdata', 'electron_check_fuses',
-      'electron_patch_fuses', 'electron_launch_debug',
-      'electron_debug_status', 'electron_ipc_sniff'
+      'asar_extract',
+      'asar_search',
+      'electron_attach',
+      'electron_inspect_app',
+      'electron_scan_userdata',
+      'electron_check_fuses',
+      'electron_patch_fuses',
+      'electron_launch_debug',
+      'electron_debug_status',
+      'electron_ipc_sniff',
     ],
   },
   {

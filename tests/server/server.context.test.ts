@@ -33,7 +33,10 @@ describe('MCPServer.context — interface coverage', () => {
       detailedData: {} as any,
       eventBus: {} as any,
       samplingBridge: { isSamplingSupported: () => false, sampleText: async () => null } as any,
-      elicitationBridge: { isElicitationSupported: () => false, requestFormInput: async () => null } as any,
+      elicitationBridge: {
+        isElicitationSupported: () => false,
+        requestFormInput: async () => null,
+      } as any,
       // ToolRegistryState
       selectedTools: [],
       enabledDomains: new Set(),

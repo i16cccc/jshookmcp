@@ -45,10 +45,10 @@ describe('LLMDeobfuscator', () => {
       const bridge = createMockBridge(true, llmResponse);
       const deob = new LLMDeobfuscator(bridge);
 
-      const result = await deob.suggestVariableNames(
-        'var _0x1a2b = getData(); _0x3c4d++;',
-        ['_0x1a2b', '_0x3c4d'],
-      );
+      const result = await deob.suggestVariableNames('var _0x1a2b = getData(); _0x3c4d++;', [
+        '_0x1a2b',
+        '_0x3c4d',
+      ]);
 
       expect(result).toHaveLength(2);
       expect(result![0]).toEqual({
@@ -64,7 +64,8 @@ describe('LLMDeobfuscator', () => {
     });
 
     it('handles markdown-wrapped JSON response', async () => {
-      const llmResponse = '```json\n[{"original": "_0xab", "suggested": "result", "confidence": "low"}]\n```';
+      const llmResponse =
+        '```json\n[{"original": "_0xab", "suggested": "result", "confidence": "low"}]\n```';
       const bridge = createMockBridge(true, llmResponse);
       const deob = new LLMDeobfuscator(bridge);
 

@@ -89,7 +89,11 @@ export const monitorPhases: Phase[] = [
       await call('profiler_heap_sampling_start', {}, 5000);
       await new Promise((r) => setTimeout(r, 500));
     },
-    tools: ['profiler_heap_sampling_start', 'profiler_heap_sampling_stop', 'performance_trace_stop'],
+    tools: [
+      'profiler_heap_sampling_start',
+      'profiler_heap_sampling_stop',
+      'performance_trace_stop',
+    ],
   },
   { name: 'Network Teardown', setup: [], tools: ['network_export_har', 'network_disable'] },
   { name: 'Debugger Teardown', setup: [], tools: ['debugger_disable'] },

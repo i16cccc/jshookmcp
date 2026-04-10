@@ -53,13 +53,14 @@ describe('tool-builder', () => {
 
   it('supports outputSchema configuration for structured payload typing', () => {
     const built = tool('structured_tool', (t) =>
-      t.desc('Returns typed output')
-       .outputSchema({ type: 'object', properties: { count: { type: 'number' } } })
+      t
+        .desc('Returns typed output')
+        .outputSchema({ type: 'object', properties: { count: { type: 'number' } } }),
     );
 
     expect(built.outputSchema).toEqual({
       type: 'object',
-      properties: { count: { type: 'number' } }
+      properties: { count: { type: 'number' } },
     });
   });
 });

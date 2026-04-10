@@ -6,7 +6,10 @@ import * as t from '@babel/types';
 import { logger } from '@utils/logger';
 
 export class ASTOptimizer {
-  optimize(code: string, options?: { onProgress?: (progress: number, total?: number) => void }): string {
+  optimize(
+    code: string,
+    options?: { onProgress?: (progress: number, total?: number) => void },
+  ): string {
     try {
       const ast = parser.parse(code, {
         sourceType: 'module',
@@ -21,25 +24,25 @@ export class ASTOptimizer {
 
         this.constantFolding(ast);
         options?.onProgress?.(++currentStep, totalSteps);
-        
+
         this.constantPropagation(ast);
         options?.onProgress?.(++currentStep, totalSteps);
-        
+
         this.deadCodeElimination(ast);
         options?.onProgress?.(++currentStep, totalSteps);
-        
+
         this.expressionSimplification(ast);
         options?.onProgress?.(++currentStep, totalSteps);
-        
+
         this.variableInlining(ast);
         options?.onProgress?.(++currentStep, totalSteps);
-        
+
         this.objectPropertyUnfolding(ast);
         options?.onProgress?.(++currentStep, totalSteps);
-        
+
         this.computedPropertyResolution(ast);
         options?.onProgress?.(++currentStep, totalSteps);
-        
+
         this.sequenceExpressionExpansion(ast);
         options?.onProgress?.(++currentStep, totalSteps);
       }

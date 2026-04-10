@@ -166,10 +166,7 @@ describe('ElicitationBridge', () => {
       });
 
       const bridge = new ElicitationBridge(server);
-      const result = await bridge.requestCaptchaSolution(
-        'https://example.com/login',
-        'reCAPTCHA',
-      );
+      const result = await bridge.requestCaptchaSolution('https://example.com/login', 'reCAPTCHA');
 
       expect(result).toEqual({
         solved: true,
@@ -185,10 +182,7 @@ describe('ElicitationBridge', () => {
       });
 
       const bridge = new ElicitationBridge(server);
-      const result = await bridge.requestCaptchaSolution(
-        'https://example.com',
-        'Cloudflare',
-      );
+      const result = await bridge.requestCaptchaSolution('https://example.com', 'Cloudflare');
 
       expect(result).toEqual({ solved: true, token: undefined });
     });

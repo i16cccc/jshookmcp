@@ -113,10 +113,7 @@ export class LLMDeobfuscator {
    * Parse the LLM's JSON response into structured name suggestions.
    * Robust against malformed output.
    */
-  private parseNameSuggestions(
-    rawResponse: string,
-    expectedIds: string[],
-  ): NameSuggestion[] {
+  private parseNameSuggestions(rawResponse: string, expectedIds: string[]): NameSuggestion[] {
     try {
       // Extract JSON array from the response (handle markdown code blocks)
       const jsonMatch = rawResponse.match(/\[[\s\S]*\]/);

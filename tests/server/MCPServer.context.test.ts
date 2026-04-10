@@ -36,7 +36,10 @@ describe('MCPServer.context', () => {
       detailedData: {} as unknown as DetailedDataManager,
       eventBus: {} as unknown as EventBus<ServerEventMap>,
       samplingBridge: { isSamplingSupported: () => false, sampleText: async () => null } as any,
-      elicitationBridge: { isElicitationSupported: () => false, requestFormInput: async () => null } as any,
+      elicitationBridge: {
+        isElicitationSupported: () => false,
+        requestFormInput: async () => null,
+      } as any,
     } satisfies ServerCore;
 
     const registryState = {
