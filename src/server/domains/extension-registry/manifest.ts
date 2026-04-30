@@ -1,5 +1,5 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 import { extensionRegistryTools } from './definitions';
 import type { ExtensionRegistryHandlers } from './handlers';
 
@@ -7,8 +7,20 @@ const DOMAIN = 'extension-registry';
 const DEP_KEY = 'extensionRegistryHandlers';
 type H = ExtensionRegistryHandlers;
 const t = toolLookup(extensionRegistryTools);
-const b = (invoke: (handlers: H, args: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof extensionRegistryTools)[number]['name']>(
+  {
+    domain: DOMAIN,
+    depKey: DEP_KEY,
+    lookup: t,
+    entries: [
+      { tool: 'extension_list_installed', method: 'handleListInstalled' },
+      { tool: 'extension_execute_in_context', method: 'handleExecuteInContext' },
+      { tool: 'extension_reload', method: 'handleReload' },
+      { tool: 'extension_uninstall', method: 'handleUninstall' },
+      { tool: 'webhook', method: 'handleWebhookDispatch' },
+    ],
+  },
+);
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { ExtensionRegistryHandlers } = await import('./handlers');
@@ -33,33 +45,7 @@ const manifest = {
   depKey: DEP_KEY,
   profiles: ['full'],
   ensure,
-  registrations: [
-    {
-      tool: t('extension_list_installed'),
-      domain: DOMAIN,
-      bind: b((handlers) => handlers.handleListInstalled()),
-    },
-    {
-      tool: t('extension_execute_in_context'),
-      domain: DOMAIN,
-      bind: b((handlers, args) => handlers.handleExecuteInContext(args)),
-    },
-    {
-      tool: t('extension_reload'),
-      domain: DOMAIN,
-      bind: b((handlers, args) => handlers.handleReload(args)),
-    },
-    {
-      tool: t('extension_uninstall'),
-      domain: DOMAIN,
-      bind: b((handlers, args) => handlers.handleUninstall(args)),
-    },
-    {
-      tool: t('webhook'),
-      domain: DOMAIN,
-      bind: b((handlers, args) => handlers.handleWebhookDispatch(args)),
-    },
-  ],
+  registrations,
   workflowRule: {
     patterns: [
       /\b(extension|plugin|addon|webhook|c2|bluetooth|ble|hid|serial|esp32|registry)\b/i,

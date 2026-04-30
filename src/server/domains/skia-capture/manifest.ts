@@ -1,8 +1,8 @@
 import { skiaTools } from '@server/domains/skia-capture/definitions';
 import type { SkiaCaptureHandlers } from '@server/domains/skia-capture/handlers';
-import { asJsonResponse } from '@server/domains/shared/response';
+import { asToolResponse } from '@server/domains/shared/response';
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 
 const DOMAIN = 'skia-capture' as const;
 const DEP_KEY = 'skiaCaptureHandlers' as const;
@@ -11,10 +11,17 @@ const PROFILES: Array<'workflow' | 'full'> = ['workflow', 'full'];
 type H = SkiaCaptureHandlers;
 
 const lookup = toolLookup(skiaTools);
-const bind = (invoke: (handler: H, args: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, async (handler, args) => {
-    return asJsonResponse(await invoke(handler, args));
-  });
+const registrations = defineMethodRegistrations<H, (typeof skiaTools)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup,
+  wrapResult: asToolResponse,
+  entries: [
+    { tool: 'skia_detect_renderer', method: 'handleSkiaDetectRenderer' },
+    { tool: 'skia_extract_scene', method: 'handleSkiaExtractScene' },
+    { tool: 'skia_correlate_objects', method: 'handleSkiaCorrelateObjects' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { SkiaCaptureHandlers } = await import('@server/domains/skia-capture/handlers');
@@ -37,23 +44,7 @@ const manifest = {
   domain: DOMAIN,
   depKey: DEP_KEY,
   profiles: PROFILES,
-  registrations: [
-    {
-      tool: lookup('skia_detect_renderer'),
-      domain: DOMAIN,
-      bind: bind((handler, args) => handler.handleSkiaDetectRenderer(args)),
-    },
-    {
-      tool: lookup('skia_extract_scene'),
-      domain: DOMAIN,
-      bind: bind((handler, args) => handler.handleSkiaExtractScene(args)),
-    },
-    {
-      tool: lookup('skia_correlate_objects'),
-      domain: DOMAIN,
-      bind: bind((handler, args) => handler.handleSkiaCorrelateObjects(args)),
-    },
-  ],
+  registrations,
   ensure,
   workflowRule: {
     patterns: [

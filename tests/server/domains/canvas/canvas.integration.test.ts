@@ -112,20 +112,24 @@ const { ensureBrowserCoreMock } = vi.hoisted(() => {
   };
 });
 
-vi.mock('@server/domains/shared/registry', () => ({
-  bindByDepKey: vi.fn((_depKey: string, _invoke: (...args: unknown[]) => unknown) => {
-    return vi.fn();
-  }),
-  ensureBrowserCore: ensureBrowserCoreMock,
-  toolLookup: vi.fn((tools: Array<{ name: string }>) => {
-    const toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
-    return (name: string) => {
-      const tool = toolsByName.get(name);
-      if (!tool) throw new Error(`Unknown tool: ${name}`);
-      return tool;
-    };
-  }),
-}));
+vi.mock('@server/domains/shared/registry', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@server/domains/shared/registry')>();
+  return {
+    ...actual,
+    bindByDepKey: vi.fn((_depKey: string, _invoke: (...args: unknown[]) => unknown) => {
+      return vi.fn();
+    }),
+    ensureBrowserCore: ensureBrowserCoreMock,
+    toolLookup: vi.fn((tools: Array<{ name: string }>) => {
+      const toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
+      return (name: string) => {
+        const tool = toolsByName.get(name);
+        if (!tool) throw new Error(`Unknown tool: ${name}`);
+        return tool;
+      };
+    }),
+  };
+});
 
 // ── Mock DebuggerManager from shared modules ───────────────────────────────────
 

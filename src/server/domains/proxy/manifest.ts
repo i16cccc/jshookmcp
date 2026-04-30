@@ -1,5 +1,5 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 import { PROXY_TOOLS } from '@server/domains/proxy/definitions';
 import type { ProxyHandlers } from '@server/domains/proxy/index';
 
@@ -7,8 +7,21 @@ const DOMAIN = 'proxy' as const;
 const DEP_KEY = 'proxyHandlers' as const;
 type H = ProxyHandlers;
 const t = toolLookup(PROXY_TOOLS);
-const b = (invoke: (h: H, a: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof PROXY_TOOLS)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: t,
+  entries: [
+    { tool: 'proxy_start', method: 'handleProxyStart' },
+    { tool: 'proxy_stop', method: 'handleProxyStop' },
+    { tool: 'proxy_status', method: 'handleProxyStatus' },
+    { tool: 'proxy_export_ca', method: 'handleProxyExportCa' },
+    { tool: 'proxy_add_rule', method: 'handleProxyAddRule' },
+    { tool: 'proxy_get_requests', method: 'handleProxyGetRequests' },
+    { tool: 'proxy_clear_logs', method: 'handleProxyClearLogs' },
+    { tool: 'proxy_setup_adb_device', method: 'handleProxySetupAdbDevice' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { ProxyHandlers } = await import('@server/domains/proxy/index');
@@ -25,25 +38,7 @@ const manifest: DomainManifest<typeof DEP_KEY, H, typeof DOMAIN> = {
   depKey: DEP_KEY,
   profiles: ['full'],
   ensure,
-
-  registrations: [
-    { tool: t('proxy_start'), domain: DOMAIN, bind: b((h, a) => h.handleProxyStart(a)) },
-    { tool: t('proxy_stop'), domain: DOMAIN, bind: b((h, a) => h.handleProxyStop(a)) },
-    { tool: t('proxy_status'), domain: DOMAIN, bind: b((h, a) => h.handleProxyStatus(a)) },
-    { tool: t('proxy_export_ca'), domain: DOMAIN, bind: b((h, a) => h.handleProxyExportCa(a)) },
-    { tool: t('proxy_add_rule'), domain: DOMAIN, bind: b((h, a) => h.handleProxyAddRule(a)) },
-    {
-      tool: t('proxy_get_requests'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleProxyGetRequests(a)),
-    },
-    { tool: t('proxy_clear_logs'), domain: DOMAIN, bind: b((h, a) => h.handleProxyClearLogs(a)) },
-    {
-      tool: t('proxy_setup_adb_device'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleProxySetupAdbDevice(a)),
-    },
-  ],
+  registrations,
 };
 
 export default manifest;

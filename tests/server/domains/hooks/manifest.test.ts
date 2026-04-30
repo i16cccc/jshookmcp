@@ -61,14 +61,12 @@ describe('Hooks Manifest', () => {
       const args = { foo: 'bar' };
 
       for (const reg of manifest.registrations) {
-        if (reg.tool.name === 'hook_preset') {
-          const fn = reg.bind as any;
-          const bound = fn({ hookPresetHandlers: mockPresetHandler });
-          await bound(args);
-        } else {
-          const fn = reg.bind as any;
-          await fn(mockAIHandler, args);
-        }
+        const fn = reg.bind as any;
+        const bound =
+          reg.tool.name === 'hook_preset'
+            ? fn({ hookPresetHandlers: mockPresetHandler })
+            : fn({ aiHookHandlers: mockAIHandler });
+        await bound(args);
       }
 
       expect(mockPresetHandler.handleHookPreset).toHaveBeenCalledWith(args);

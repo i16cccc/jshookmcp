@@ -1,5 +1,5 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 import { sourcemapTools } from '@server/domains/sourcemap/definitions';
 import type { SourcemapToolHandlers } from '@server/domains/sourcemap/index';
 
@@ -7,8 +7,17 @@ const DOMAIN = 'sourcemap' as const;
 const DEP_KEY = 'sourcemapHandlers' as const;
 type H = SourcemapToolHandlers;
 const t = toolLookup(sourcemapTools);
-const b = (invoke: (h: H, a: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof sourcemapTools)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: t,
+  entries: [
+    { tool: 'sourcemap_discover', method: 'handleSourcemapDiscover' },
+    { tool: 'sourcemap_fetch_and_parse', method: 'handleSourcemapFetchAndParse' },
+    { tool: 'sourcemap_reconstruct_tree', method: 'handleSourcemapReconstructTree' },
+    { tool: 'sourcemap_parse_v4', method: 'handleSourcemapParseV4' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { CodeCollector } = await import('@server/domains/shared/modules');
@@ -28,28 +37,7 @@ const manifest = {
   depKey: DEP_KEY,
   profiles: ['full'],
   ensure,
-  registrations: [
-    {
-      tool: t('sourcemap_discover'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleSourcemapDiscover(a)),
-    },
-    {
-      tool: t('sourcemap_fetch_and_parse'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleSourcemapFetchAndParse(a)),
-    },
-    {
-      tool: t('sourcemap_reconstruct_tree'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleSourcemapReconstructTree(a)),
-    },
-    {
-      tool: t('sourcemap_parse_v4'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleSourcemapParseV4(a)),
-    },
-  ],
+  registrations,
 } satisfies DomainManifest<typeof DEP_KEY, H, typeof DOMAIN>;
 
 export default manifest;

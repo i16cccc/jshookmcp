@@ -1,5 +1,9 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, ensureBrowserCore, toolLookup } from '@server/domains/shared/registry';
+import {
+  defineMethodRegistrations,
+  ensureBrowserCore,
+  toolLookup,
+} from '@server/domains/shared/registry';
 import { streamingTools } from '@server/domains/streaming/definitions';
 import type { StreamingToolHandlers } from '@server/domains/streaming/index';
 
@@ -7,8 +11,18 @@ const DOMAIN = 'streaming' as const;
 const DEP_KEY = 'streamingHandlers' as const;
 type H = StreamingToolHandlers;
 const t = toolLookup(streamingTools);
-const b = (invoke: (h: H, a: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof streamingTools)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: t,
+  entries: [
+    { tool: 'ws_monitor', method: 'handleWsMonitorDispatch' },
+    { tool: 'ws_get_frames', method: 'handleWsGetFrames' },
+    { tool: 'ws_get_connections', method: 'handleWsGetConnections' },
+    { tool: 'sse_monitor_enable', method: 'handleSseMonitorEnable' },
+    { tool: 'sse_get_events', method: 'handleSseGetEvents' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { StreamingToolHandlers } = await import('@server/domains/streaming/index');
@@ -25,21 +39,7 @@ const manifest = {
   depKey: DEP_KEY,
   profiles: ['workflow', 'full'],
   ensure,
-  registrations: [
-    { tool: t('ws_monitor'), domain: DOMAIN, bind: b((h, a) => h.handleWsMonitorDispatch(a)) },
-    { tool: t('ws_get_frames'), domain: DOMAIN, bind: b((h, a) => h.handleWsGetFrames(a)) },
-    {
-      tool: t('ws_get_connections'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleWsGetConnections(a)),
-    },
-    {
-      tool: t('sse_monitor_enable'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleSseMonitorEnable(a)),
-    },
-    { tool: t('sse_get_events'), domain: DOMAIN, bind: b((h, a) => h.handleSseGetEvents(a)) },
-  ],
+  registrations,
 } satisfies DomainManifest<typeof DEP_KEY, H, typeof DOMAIN>;
 
 export default manifest;

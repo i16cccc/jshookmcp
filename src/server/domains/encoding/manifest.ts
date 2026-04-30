@@ -1,5 +1,9 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, ensureBrowserCore, toolLookup } from '@server/domains/shared/registry';
+import {
+  defineMethodRegistrations,
+  ensureBrowserCore,
+  toolLookup,
+} from '@server/domains/shared/registry';
 import { encodingTools } from '@server/domains/encoding/definitions';
 import type { EncodingToolHandlers } from '@server/domains/encoding/index';
 
@@ -7,8 +11,18 @@ const DOMAIN = 'encoding' as const;
 const DEP_KEY = 'encodingHandlers' as const;
 type H = EncodingToolHandlers;
 const t = toolLookup(encodingTools);
-const b = (invoke: (h: H, a: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof encodingTools)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: t,
+  entries: [
+    { tool: 'binary_detect_format', method: 'handleBinaryDetectFormat' },
+    { tool: 'binary_decode', method: 'handleBinaryDecode' },
+    { tool: 'binary_encode', method: 'handleBinaryEncode' },
+    { tool: 'binary_entropy_analysis', method: 'handleBinaryEntropyAnalysis' },
+    { tool: 'protobuf_decode_raw', method: 'handleProtobufDecodeRaw' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { EncodingToolHandlers } = await import('@server/domains/encoding/index');
@@ -29,25 +43,7 @@ const manifest = {
   depKey: DEP_KEY,
   profiles: ['workflow', 'full'],
   ensure,
-  registrations: [
-    {
-      tool: t('binary_detect_format'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleBinaryDetectFormat(a)),
-    },
-    { tool: t('binary_decode'), domain: DOMAIN, bind: b((h, a) => h.handleBinaryDecode(a)) },
-    { tool: t('binary_encode'), domain: DOMAIN, bind: b((h, a) => h.handleBinaryEncode(a)) },
-    {
-      tool: t('binary_entropy_analysis'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleBinaryEntropyAnalysis(a)),
-    },
-    {
-      tool: t('protobuf_decode_raw'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleProtobufDecodeRaw(a)),
-    },
-  ],
+  registrations,
 } satisfies DomainManifest<typeof DEP_KEY, H, typeof DOMAIN>;
 
 export default manifest;

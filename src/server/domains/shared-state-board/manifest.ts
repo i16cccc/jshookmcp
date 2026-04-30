@@ -1,5 +1,5 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 import { sharedStateBoardTools } from '@server/domains/shared-state-board/definitions';
 import type { SharedStateBoardHandlers } from '@server/domains/shared-state-board/index';
 import type { RuntimeSnapshotScheduler } from '@server/persistence/RuntimeSnapshotScheduler';
@@ -9,8 +9,16 @@ const DOMAIN = 'shared-state-board' as const;
 const DEP_KEY = 'sharedStateBoardHandlers' as const;
 type H = SharedStateBoardHandlers;
 const t = toolLookup(sharedStateBoardTools);
-const b = (invoke: (h: H, a: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof sharedStateBoardTools)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: t,
+  entries: [
+    { tool: 'state_board', method: 'handleDispatch' },
+    { tool: 'state_board_watch', method: 'handleWatchDispatch' },
+    { tool: 'state_board_io', method: 'handleIODispatch' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { SharedStateBoardHandlers } = await import('@server/domains/shared-state-board/index');
@@ -45,23 +53,7 @@ const manifest = {
   depKey: DEP_KEY,
   profiles: ['workflow', 'full'],
   ensure,
-  registrations: [
-    {
-      tool: t('state_board'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleDispatch(a)),
-    },
-    {
-      tool: t('state_board_watch'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleWatchDispatch(a)),
-    },
-    {
-      tool: t('state_board_io'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleIODispatch(a)),
-    },
-  ],
+  registrations,
 } satisfies DomainManifest<typeof DEP_KEY, H, typeof DOMAIN>;
 
 export default manifest;

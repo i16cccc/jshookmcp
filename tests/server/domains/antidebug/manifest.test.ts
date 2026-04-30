@@ -3,15 +3,6 @@ import type { CodeCollector } from '@server/domains/shared/modules';
 import type { AntiDebugToolHandlers } from '@server/domains/antidebug/handlers';
 import type { MCPServerContext } from '@server/domains/shared/registry';
 
-// Mock registry so bind bypasses real dependency resolution and returns the lambda
-vi.mock('@server/domains/shared/registry', async (importOriginal) => {
-  const actual: any = await importOriginal();
-  return {
-    ...actual,
-    bindByDepKey: (_key: string, fn: any) => fn,
-  };
-});
-
 // Import after mocks
 import manifest from '@server/domains/antidebug/manifest';
 
@@ -55,11 +46,8 @@ describe('Antidebug Manifest', () => {
 
       const args = { foo: 'bar' };
 
-      // Since we mocked bindByDepKey to return the raw lambda (h, a) => h.method(a)
-      // we can assert that calling each bind function routes to the correct method.
       for (const reg of manifest.registrations) {
-        const fn = reg.bind as unknown as (h: AntiDebugToolHandlers, a: any) => unknown;
-        await fn(mockHandler, args);
+        await reg.bind({ antidebugHandlers: mockHandler as any })(args as any);
       }
 
       expect(mockHandler.handleAntidebugBypass).toHaveBeenCalledWith(args);

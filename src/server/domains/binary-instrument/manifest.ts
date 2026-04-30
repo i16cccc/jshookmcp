@@ -1,5 +1,5 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 import { binaryInstrumentTools } from './definitions';
 import type { BinaryInstrumentHandlers } from './handlers';
 
@@ -7,8 +7,33 @@ const DOMAIN = 'binary-instrument' as const;
 const DEP_KEY = 'binaryInstrumentHandlers' as const;
 type H = BinaryInstrumentHandlers;
 const toolByName = toolLookup(binaryInstrumentTools);
-const bind = (invoke: (handlers: H, args: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof binaryInstrumentTools)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: toolByName,
+  entries: [
+    { tool: 'binary_instrument_capabilities', method: 'handleBinaryInstrumentCapabilities' },
+    { tool: 'frida_attach', method: 'handleFridaAttach' },
+    { tool: 'frida_enumerate_modules', method: 'handleFridaEnumerateModules' },
+    { tool: 'ghidra_analyze', method: 'handleGhidraAnalyze' },
+    { tool: 'generate_hooks', method: 'handleGenerateHooks' },
+    { tool: 'unidbg_emulate', method: 'handleUnidbgEmulate' },
+    { tool: 'frida_run_script', method: 'handleFridaRunScript' },
+    { tool: 'frida_detach', method: 'handleFridaDetach' },
+    { tool: 'frida_list_sessions', method: 'handleFridaListSessions' },
+    { tool: 'frida_generate_script', method: 'handleFridaGenerateScript' },
+    { tool: 'get_available_plugins', method: 'handleGetAvailablePlugins' },
+    { tool: 'ghidra_decompile', method: 'handleGhidraDecompile' },
+    { tool: 'ida_decompile', method: 'handleIdaDecompile' },
+    { tool: 'jadx_decompile', method: 'handleJadxDecompile' },
+    { tool: 'unidbg_launch', method: 'handleUnidbgLaunch' },
+    { tool: 'unidbg_call', method: 'handleUnidbgCall' },
+    { tool: 'unidbg_trace', method: 'handleUnidbgTrace' },
+    { tool: 'export_hook_script', method: 'handleExportHookScript' },
+    { tool: 'frida_enumerate_functions', method: 'handleFridaEnumerateFunctions' },
+    { tool: 'frida_find_symbols', method: 'handleFridaFindSymbols' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { BinaryInstrumentHandlers } = await import('./handlers');
@@ -30,108 +55,7 @@ const manifest = {
   depKey: DEP_KEY,
   profiles: ['full'],
   ensure,
-  registrations: [
-    {
-      tool: toolByName('binary_instrument_capabilities'),
-      domain: DOMAIN,
-      bind: bind((handlers) => handlers.handleBinaryInstrumentCapabilities()),
-    },
-    {
-      tool: toolByName('frida_attach'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleFridaAttach(args)),
-    },
-    {
-      tool: toolByName('frida_enumerate_modules'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleFridaEnumerateModules(args)),
-    },
-    {
-      tool: toolByName('ghidra_analyze'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleGhidraAnalyze(args)),
-    },
-    {
-      tool: toolByName('generate_hooks'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleGenerateHooks(args)),
-    },
-    {
-      tool: toolByName('unidbg_emulate'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleUnidbgEmulate(args)),
-    },
-    {
-      tool: toolByName('frida_run_script'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleFridaRunScript(args)),
-    },
-    {
-      tool: toolByName('frida_detach'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleFridaDetach(args)),
-    },
-    {
-      tool: toolByName('frida_list_sessions'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleFridaListSessions(args)),
-    },
-    {
-      tool: toolByName('frida_generate_script'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleFridaGenerateScript(args)),
-    },
-    {
-      tool: toolByName('get_available_plugins'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleGetAvailablePlugins(args)),
-    },
-    {
-      tool: toolByName('ghidra_decompile'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleGhidraDecompile(args)),
-    },
-    {
-      tool: toolByName('ida_decompile'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleIdaDecompile(args)),
-    },
-    {
-      tool: toolByName('jadx_decompile'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleJadxDecompile(args)),
-    },
-    {
-      tool: toolByName('unidbg_launch'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleUnidbgLaunch(args)),
-    },
-    {
-      tool: toolByName('unidbg_call'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleUnidbgCall(args)),
-    },
-    {
-      tool: toolByName('unidbg_trace'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleUnidbgTrace(args)),
-    },
-    {
-      tool: toolByName('export_hook_script'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleExportHookScript(args)),
-    },
-    {
-      tool: toolByName('frida_enumerate_functions'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleFridaEnumerateFunctions(args)),
-    },
-    {
-      tool: toolByName('frida_find_symbols'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleFridaFindSymbols(args)),
-    },
-  ],
+  registrations,
   workflowRule: {
     patterns: [
       /\b(frida|ghidra|ida|unidbg|jadx|binary|disassemb|decompil|dump\s?so)\b/i,

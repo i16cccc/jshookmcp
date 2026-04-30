@@ -1,5 +1,5 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 import { TRACE_TOOLS } from '@server/domains/trace/definitions.tools';
 import type { TraceToolHandlers } from '@server/domains/trace/handlers';
 
@@ -7,8 +7,22 @@ const DOMAIN = 'trace' as const;
 const DEP_KEY = 'traceHandlers' as const;
 type H = TraceToolHandlers;
 const t = toolLookup(TRACE_TOOLS);
-const b = (invoke: (h: H, a: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof TRACE_TOOLS)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: t,
+  entries: [
+    { tool: 'trace_recording', method: 'handleTraceRecording' },
+    { tool: 'start_trace_recording', method: 'handleStartTraceRecording' },
+    { tool: 'stop_trace_recording', method: 'handleStopTraceRecording' },
+    { tool: 'query_trace_sql', method: 'handleQueryTraceSql' },
+    { tool: 'seek_to_timestamp', method: 'handleSeekToTimestamp' },
+    { tool: 'trace_get_network_flow', method: 'handleGetTraceNetworkFlow' },
+    { tool: 'diff_heap_snapshots', method: 'handleDiffHeapSnapshots' },
+    { tool: 'export_trace', method: 'handleExportTrace' },
+    { tool: 'summarize_trace', method: 'handleSummarizeTrace' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { TraceRecorder } = await import('@modules/trace/TraceRecorder');
@@ -50,38 +64,7 @@ const manifest = {
     ],
     hint: 'Start recording → perform actions → stop recording → summarize/query/seek/diff/export',
   },
-
-  registrations: [
-    {
-      tool: t('trace_recording'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleTraceRecording(a)),
-    },
-    {
-      tool: t('start_trace_recording'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleStartTraceRecording(a)),
-    },
-    {
-      tool: t('stop_trace_recording'),
-      domain: DOMAIN,
-      bind: b((h, _a) => h.handleStopTraceRecording()),
-    },
-    { tool: t('query_trace_sql'), domain: DOMAIN, bind: b((h, a) => h.handleQueryTraceSql(a)) },
-    { tool: t('seek_to_timestamp'), domain: DOMAIN, bind: b((h, a) => h.handleSeekToTimestamp(a)) },
-    {
-      tool: t('trace_get_network_flow'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleGetTraceNetworkFlow(a)),
-    },
-    {
-      tool: t('diff_heap_snapshots'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleDiffHeapSnapshots(a)),
-    },
-    { tool: t('export_trace'), domain: DOMAIN, bind: b((h, a) => h.handleExportTrace(a)) },
-    { tool: t('summarize_trace'), domain: DOMAIN, bind: b((h, a) => h.handleSummarizeTrace(a)) },
-  ],
+  registrations,
 } satisfies DomainManifest<typeof DEP_KEY, H, typeof DOMAIN>;
 
 export default manifest;

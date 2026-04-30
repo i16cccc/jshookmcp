@@ -1,5 +1,9 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, ensureBrowserCore, toolLookup } from '@server/domains/shared/registry';
+import {
+  defineMethodRegistrations,
+  ensureBrowserCore,
+  toolLookup,
+} from '@server/domains/shared/registry';
 import { canvasTools } from '@server/domains/canvas/definitions';
 import type { CanvasToolHandlers } from '@server/domains/canvas/handlers';
 import type { ReverseEvidenceGraph } from '@server/evidence/ReverseEvidenceGraph';
@@ -9,8 +13,17 @@ const DOMAIN = 'canvas' as const;
 const DEP_KEY = 'canvasHandlers' as const;
 type H = CanvasToolHandlers;
 const t = toolLookup(canvasTools);
-const b = (invoke: (h: H, a: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof canvasTools)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: t,
+  entries: [
+    { tool: 'canvas_engine_fingerprint', method: 'handleFingerprint' },
+    { tool: 'canvas_scene_dump', method: 'handleSceneDump' },
+    { tool: 'canvas_pick_object_at_point', method: 'handlePick' },
+    { tool: 'canvas_trace_click_handler', method: 'handleTraceClick' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { DebuggerManager } = await import('@server/domains/shared/modules');
@@ -89,28 +102,7 @@ const manifest = {
     ],
   },
 
-  registrations: [
-    {
-      tool: t('canvas_engine_fingerprint'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleFingerprint(a)),
-    },
-    {
-      tool: t('canvas_scene_dump'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleSceneDump(a)),
-    },
-    {
-      tool: t('canvas_pick_object_at_point'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handlePick(a)),
-    },
-    {
-      tool: t('canvas_trace_click_handler'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleTraceClick(a)),
-    },
-  ],
+  registrations,
 } satisfies DomainManifest<typeof DEP_KEY, H, typeof DOMAIN>;
 
 export default manifest;

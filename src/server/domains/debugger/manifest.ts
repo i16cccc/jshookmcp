@@ -1,5 +1,9 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, ensureBrowserCore, toolLookup } from '@server/domains/shared/registry';
+import {
+  defineMethodRegistrations,
+  ensureBrowserCore,
+  toolLookup,
+} from '@server/domains/shared/registry';
 import { debuggerTools } from '@server/domains/debugger/definitions';
 import type { DebuggerToolHandlers } from '@server/domains/debugger/index';
 
@@ -7,8 +11,29 @@ const DOMAIN = 'debugger' as const;
 const DEP_KEY = 'debuggerHandlers' as const;
 type H = DebuggerToolHandlers;
 const t = toolLookup(debuggerTools);
-const b = (invoke: (h: H, a: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof debuggerTools)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: t,
+  entries: [
+    { tool: 'debugger_lifecycle', method: 'handleDebuggerLifecycle' },
+    { tool: 'debugger_pause', method: 'handleDebuggerPause' },
+    { tool: 'debugger_resume', method: 'handleDebuggerResume' },
+    { tool: 'debugger_step', method: 'handleDebuggerStep' },
+    { tool: 'breakpoint', method: 'handleBreakpoint' },
+    { tool: 'get_call_stack', method: 'handleGetCallStack' },
+    { tool: 'debugger_evaluate', method: 'handleDebuggerEvaluateDispatch' },
+    { tool: 'debugger_wait_for_paused', method: 'handleDebuggerWaitForPaused' },
+    { tool: 'debugger_get_paused_state', method: 'handleDebuggerGetPausedState' },
+    { tool: 'get_object_properties', method: 'handleGetObjectProperties' },
+    { tool: 'get_scope_variables_enhanced', method: 'handleGetScopeVariablesEnhanced' },
+    { tool: 'debugger_session', method: 'handleDebuggerSession' },
+    { tool: 'watch', method: 'handleWatch' },
+    { tool: 'blackbox_add', method: 'handleBlackboxAdd' },
+    { tool: 'blackbox_add_common', method: 'handleBlackboxAddCommon' },
+    { tool: 'blackbox_list', method: 'handleBlackboxList' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { DebuggerManager, RuntimeInspector } = await import('@server/domains/shared/modules');
@@ -49,52 +74,7 @@ const manifest = {
     ],
   },
 
-  registrations: [
-    {
-      tool: t('debugger_lifecycle'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleDebuggerLifecycle(a)),
-    },
-    { tool: t('debugger_pause'), domain: DOMAIN, bind: b((h, a) => h.handleDebuggerPause(a)) },
-    { tool: t('debugger_resume'), domain: DOMAIN, bind: b((h, a) => h.handleDebuggerResume(a)) },
-    { tool: t('debugger_step'), domain: DOMAIN, bind: b((h, a) => h.handleDebuggerStep(a)) },
-    { tool: t('breakpoint'), domain: DOMAIN, bind: b((h, a) => h.handleBreakpoint(a)) },
-    { tool: t('get_call_stack'), domain: DOMAIN, bind: b((h, a) => h.handleGetCallStack(a)) },
-    {
-      tool: t('debugger_evaluate'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleDebuggerEvaluateDispatch(a)),
-    },
-    {
-      tool: t('debugger_wait_for_paused'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleDebuggerWaitForPaused(a)),
-    },
-    {
-      tool: t('debugger_get_paused_state'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleDebuggerGetPausedState(a)),
-    },
-    {
-      tool: t('get_object_properties'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleGetObjectProperties(a)),
-    },
-    {
-      tool: t('get_scope_variables_enhanced'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleGetScopeVariablesEnhanced(a)),
-    },
-    { tool: t('debugger_session'), domain: DOMAIN, bind: b((h, a) => h.handleDebuggerSession(a)) },
-    { tool: t('watch'), domain: DOMAIN, bind: b((h, a) => h.handleWatch(a)) },
-    { tool: t('blackbox_add'), domain: DOMAIN, bind: b((h, a) => h.handleBlackboxAdd(a)) },
-    {
-      tool: t('blackbox_add_common'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleBlackboxAddCommon(a)),
-    },
-    { tool: t('blackbox_list'), domain: DOMAIN, bind: b((h, a) => h.handleBlackboxList(a)) },
-  ],
+  registrations,
 } satisfies DomainManifest<typeof DEP_KEY, H, typeof DOMAIN>;
 
 export default manifest;

@@ -1,6 +1,6 @@
 import type { MCPServerContext } from '@server/MCPServer.context';
 import type { DomainManifest, ToolRegistration } from '@server/registry/contracts';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 import { adbBridgeTools } from './definitions';
 import type { ADBBridgeHandlers } from './handlers';
 
@@ -8,27 +8,19 @@ const DOMAIN = 'adb-bridge';
 const DEP_KEY = 'adbBridgeHandlers';
 
 const toolByName = toolLookup(adbBridgeTools);
-const bind = (
-  invoke: (handlers: ADBBridgeHandlers, args: Record<string, unknown>) => Promise<unknown>,
-) => bindByDepKey<ADBBridgeHandlers>(DEP_KEY, invoke);
-
-const registrations: ToolRegistration[] = [
-  {
-    tool: toolByName('adb_apk_analyze'),
-    domain: DOMAIN,
-    bind: bind((handlers, args) => handlers.handleAnalyzeApk(args)),
-  },
-  {
-    tool: toolByName('adb_webview_list'),
-    domain: DOMAIN,
-    bind: bind((handlers, args) => handlers.handleWebViewList(args)),
-  },
-  {
-    tool: toolByName('adb_webview_attach'),
-    domain: DOMAIN,
-    bind: bind((handlers, args) => handlers.handleWebViewAttach(args)),
-  },
-];
+const registrations: ToolRegistration[] = defineMethodRegistrations<
+  ADBBridgeHandlers,
+  (typeof adbBridgeTools)[number]['name']
+>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: toolByName,
+  entries: [
+    { tool: 'adb_apk_analyze', method: 'handleAnalyzeApk' },
+    { tool: 'adb_webview_list', method: 'handleWebViewList' },
+    { tool: 'adb_webview_attach', method: 'handleWebViewAttach' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<ADBBridgeHandlers> {
   const { ADBBridgeHandlers } = await import('./handlers');

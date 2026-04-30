@@ -1,19 +1,29 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 import { mojoIpcTools } from './definitions';
 import type { MojoIPCHandlers } from './index';
 
 const DOMAIN = 'mojo-ipc' as const;
 const DEP_KEY = 'mojoIpcHandlers' as const;
+type H = MojoIPCHandlers;
 
 const toolByName = toolLookup(mojoIpcTools);
-const bind = (
-  invoke: (handlers: MojoIPCHandlers, args: Record<string, unknown>) => Promise<unknown>,
-) => bindByDepKey<MojoIPCHandlers>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof mojoIpcTools)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: toolByName,
+  entries: [
+    { tool: 'mojo_ipc_capabilities', method: 'handleMojoIpcCapabilities' },
+    { tool: 'mojo_monitor', method: 'handleMojoMonitorDispatch' },
+    { tool: 'mojo_decode_message', method: 'handleMojoDecodeMessage' },
+    { tool: 'mojo_list_interfaces', method: 'handleMojoListInterfaces' },
+    { tool: 'mojo_messages_get', method: 'handleMojoMessagesGet' },
+  ],
+});
 
-async function ensure(ctx: MCPServerContext): Promise<MojoIPCHandlers> {
+async function ensure(ctx: MCPServerContext): Promise<H> {
   const { MojoIPCHandlers } = await import('./index');
-  const existingHandlers = ctx.getDomainInstance<MojoIPCHandlers>(DEP_KEY);
+  const existingHandlers = ctx.getDomainInstance<H>(DEP_KEY);
   if (existingHandlers) {
     return existingHandlers;
   }
@@ -29,33 +39,7 @@ const manifest: DomainManifest<typeof DEP_KEY, MojoIPCHandlers, typeof DOMAIN> =
   domain: DOMAIN,
   depKey: DEP_KEY,
   profiles: ['full'],
-  registrations: [
-    {
-      tool: toolByName('mojo_ipc_capabilities'),
-      domain: DOMAIN,
-      bind: bind((handlers) => handlers.handleMojoIpcCapabilities()),
-    },
-    {
-      tool: toolByName('mojo_monitor'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleMojoMonitorDispatch(args)),
-    },
-    {
-      tool: toolByName('mojo_decode_message'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleMojoDecodeMessage(args)),
-    },
-    {
-      tool: toolByName('mojo_list_interfaces'),
-      domain: DOMAIN,
-      bind: bind((handlers) => handlers.handleMojoListInterfaces()),
-    },
-    {
-      tool: toolByName('mojo_messages_get'),
-      domain: DOMAIN,
-      bind: bind((handlers, args) => handlers.handleMojoMessagesGet(args)),
-    },
-  ],
+  registrations,
   ensure,
   workflowRule: {
     patterns: [

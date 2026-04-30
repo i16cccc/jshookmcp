@@ -1,5 +1,5 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 import { sandboxTools } from '@server/domains/sandbox/definitions';
 import type { SandboxToolHandlers } from '@server/domains/sandbox/handlers';
 
@@ -7,8 +7,12 @@ const DOMAIN = 'sandbox' as const;
 const DEP_KEY = 'sandboxHandlers' as const;
 type H = SandboxToolHandlers;
 const t = toolLookup(sandboxTools);
-const b = (invoke: (h: H, a: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof sandboxTools)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: t,
+  entries: [{ tool: 'execute_sandbox_script', method: 'handleExecuteSandboxScript' }],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { SandboxToolHandlers } = await import('@server/domains/sandbox/handlers');
@@ -26,13 +30,7 @@ const manifest = {
   depKey: DEP_KEY,
   profiles: ['full'],
   ensure,
-  registrations: [
-    {
-      tool: t('execute_sandbox_script'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleExecuteSandboxScript(a)),
-    },
-  ],
+  registrations,
 } satisfies DomainManifest<typeof DEP_KEY, H, typeof DOMAIN>;
 
 export default manifest;

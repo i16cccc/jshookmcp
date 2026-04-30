@@ -1,5 +1,5 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 import { instrumentationTools } from '@server/domains/instrumentation/definitions';
 import type { InstrumentationHandlers } from '@server/domains/instrumentation/handlers';
 import type { InstrumentationSessionManager } from '@server/instrumentation/InstrumentationSession';
@@ -11,8 +11,18 @@ const DOMAIN = 'instrumentation' as const;
 const DEP_KEY = 'instrumentationHandlers' as const;
 type H = InstrumentationHandlers;
 const t = toolLookup(instrumentationTools);
-const b = (invoke: (h: H, a: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof instrumentationTools)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: t,
+  entries: [
+    { tool: 'instrumentation_session', method: 'handleSessionDispatch' },
+    { tool: 'instrumentation_operation', method: 'handleOperationDispatch' },
+    { tool: 'instrumentation_artifact', method: 'handleArtifactDispatch' },
+    { tool: 'instrumentation_hook_preset', method: 'handleHookPreset' },
+    { tool: 'instrumentation_network_replay', method: 'handleNetworkReplay' },
+  ],
+});
 
 interface HookPresetHandlerLike {
   handleHookPreset(args: Record<string, unknown>): Promise<ToolResponse>;
@@ -91,34 +101,7 @@ const manifest = {
     ],
     hint: 'Instrumentation session: create session → attach hook presets / network replay → record artifacts → query artifacts → destroy when done',
   },
-
-  registrations: [
-    {
-      tool: t('instrumentation_session'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleSessionDispatch(a)),
-    },
-    {
-      tool: t('instrumentation_operation'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleOperationDispatch(a)),
-    },
-    {
-      tool: t('instrumentation_artifact'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleArtifactDispatch(a)),
-    },
-    {
-      tool: t('instrumentation_hook_preset'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleHookPreset(a)),
-    },
-    {
-      tool: t('instrumentation_network_replay'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleNetworkReplay(a)),
-    },
-  ],
+  registrations,
 } satisfies DomainManifest<typeof DEP_KEY, H, typeof DOMAIN>;
 
 export default manifest;

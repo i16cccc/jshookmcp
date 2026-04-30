@@ -1,5 +1,5 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 import { evidenceTools } from '@server/domains/evidence/definitions';
 import type { EvidenceHandlers } from '@server/domains/evidence/handlers';
 import type { ReverseEvidenceGraph } from '@server/evidence/ReverseEvidenceGraph';
@@ -12,8 +12,16 @@ const DOMAIN = 'evidence' as const;
 const DEP_KEY = 'evidenceHandlers' as const;
 type H = EvidenceHandlers;
 const t = toolLookup(evidenceTools);
-const b = (invoke: (h: H, a: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof evidenceTools)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: t,
+  entries: [
+    { tool: 'evidence_query', method: 'handleQueryDispatch' },
+    { tool: 'evidence_export', method: 'handleExportDispatch' },
+    { tool: 'evidence_chain', method: 'handleChain' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { ReverseEvidenceGraph } = await import('@server/evidence/ReverseEvidenceGraph');
@@ -71,24 +79,7 @@ const manifest = {
     tools: ['evidence_query', 'evidence_export'],
     hint: 'Evidence graph: query by URL/function/scriptId → get provenance chain → export as JSON or Markdown report',
   },
-
-  registrations: [
-    {
-      tool: t('evidence_query'),
-      domain: DOMAIN,
-      bind: b(async (h, a) => h.handleQueryDispatch(a)),
-    },
-    {
-      tool: t('evidence_export'),
-      domain: DOMAIN,
-      bind: b(async (h, a) => h.handleExportDispatch(a)),
-    },
-    {
-      tool: t('evidence_chain'),
-      domain: DOMAIN,
-      bind: b(async (h, a) => h.handleChain(a)),
-    },
-  ],
+  registrations,
 } satisfies DomainManifest<typeof DEP_KEY, H, typeof DOMAIN>;
 
 export default manifest;

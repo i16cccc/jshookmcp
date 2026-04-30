@@ -1,5 +1,5 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 import { graphqlTools } from '@server/domains/graphql/definitions';
 import type { GraphQLToolHandlers } from '@server/domains/graphql/index';
 
@@ -7,8 +7,18 @@ const DOMAIN = 'graphql' as const;
 const DEP_KEY = 'graphqlHandlers' as const;
 type H = GraphQLToolHandlers;
 const t = toolLookup(graphqlTools);
-const b = (invoke: (h: H, a: Record<string, unknown>) => Promise<unknown>) =>
-  bindByDepKey<H>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<H, (typeof graphqlTools)[number]['name']>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: t,
+  entries: [
+    { tool: 'call_graph_analyze', method: 'handleCallGraphAnalyze' },
+    { tool: 'script_replace_persist', method: 'handleScriptReplacePersist' },
+    { tool: 'graphql_introspect', method: 'handleGraphqlIntrospect' },
+    { tool: 'graphql_extract_queries', method: 'handleGraphqlExtractQueries' },
+    { tool: 'graphql_replay', method: 'handleGraphqlReplay' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<H> {
   const { CodeCollector, ConsoleMonitor } = await import('@server/domains/shared/modules');
@@ -36,29 +46,7 @@ const manifest: DomainManifest<typeof DEP_KEY, H, typeof DOMAIN> = {
   depKey: DEP_KEY,
   profiles: ['workflow', 'full'],
   ensure,
-  registrations: [
-    {
-      tool: t('call_graph_analyze'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleCallGraphAnalyze(a)),
-    },
-    {
-      tool: t('script_replace_persist'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleScriptReplacePersist(a)),
-    },
-    {
-      tool: t('graphql_introspect'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleGraphqlIntrospect(a)),
-    },
-    {
-      tool: t('graphql_extract_queries'),
-      domain: DOMAIN,
-      bind: b((h, a) => h.handleGraphqlExtractQueries(a)),
-    },
-    { tool: t('graphql_replay'), domain: DOMAIN, bind: b((h, a) => h.handleGraphqlReplay(a)) },
-  ],
+  registrations,
 };
 
 export default manifest;

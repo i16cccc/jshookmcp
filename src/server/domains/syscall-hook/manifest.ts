@@ -1,5 +1,5 @@
 import type { DomainManifest, MCPServerContext } from '@server/domains/shared/registry';
-import { bindByDepKey, toolLookup } from '@server/domains/shared/registry';
+import { defineMethodRegistrations, toolLookup } from '@server/domains/shared/registry';
 import { syscallHookToolDefinitions } from '@server/domains/syscall-hook/definitions';
 import type { SyscallHookHandlers } from '@server/domains/syscall-hook/handlers';
 
@@ -9,9 +9,23 @@ const DEP_KEY = 'syscallHookHandlers' as const;
 type Handlers = SyscallHookHandlers;
 
 const lookupTool = toolLookup(syscallHookToolDefinitions);
-const bindTool = (
-  invoke: (handlers: Handlers, args: Record<string, unknown>) => Promise<unknown>,
-) => bindByDepKey<Handlers>(DEP_KEY, invoke);
+const registrations = defineMethodRegistrations<
+  Handlers,
+  (typeof syscallHookToolDefinitions)[number]['name']
+>({
+  domain: DOMAIN,
+  depKey: DEP_KEY,
+  lookup: lookupTool,
+  entries: [
+    { tool: 'syscall_start_monitor', method: 'handleSyscallStartMonitor' },
+    { tool: 'syscall_stop_monitor', method: 'handleSyscallStopMonitor' },
+    { tool: 'syscall_capture_events', method: 'handleSyscallCaptureEvents' },
+    { tool: 'syscall_correlate_js', method: 'handleSyscallCorrelateJs' },
+    { tool: 'syscall_filter', method: 'handleSyscallFilter' },
+    { tool: 'syscall_get_stats', method: 'handleSyscallGetStats' },
+    { tool: 'syscall_ebpf_trace', method: 'handleSyscallEbpfTrace' },
+  ],
+});
 
 async function ensure(ctx: MCPServerContext): Promise<SyscallHookHandlers> {
   const { SyscallHookHandlers } = await import('@server/domains/syscall-hook/handlers');
@@ -32,43 +46,7 @@ const manifest = {
   depKey: DEP_KEY,
   profiles: ['full'],
   ensure,
-  registrations: [
-    {
-      tool: lookupTool('syscall_start_monitor'),
-      domain: DOMAIN,
-      bind: bindTool((handlers, args) => handlers.handleSyscallStartMonitor(args)),
-    },
-    {
-      tool: lookupTool('syscall_stop_monitor'),
-      domain: DOMAIN,
-      bind: bindTool((handlers) => handlers.handleSyscallStopMonitor()),
-    },
-    {
-      tool: lookupTool('syscall_capture_events'),
-      domain: DOMAIN,
-      bind: bindTool((handlers, args) => handlers.handleSyscallCaptureEvents(args)),
-    },
-    {
-      tool: lookupTool('syscall_correlate_js'),
-      domain: DOMAIN,
-      bind: bindTool((handlers, args) => handlers.handleSyscallCorrelateJs(args)),
-    },
-    {
-      tool: lookupTool('syscall_filter'),
-      domain: DOMAIN,
-      bind: bindTool((handlers, args) => handlers.handleSyscallFilter(args)),
-    },
-    {
-      tool: lookupTool('syscall_get_stats'),
-      domain: DOMAIN,
-      bind: bindTool((handlers) => handlers.handleSyscallGetStats()),
-    },
-    {
-      tool: lookupTool('syscall_ebpf_trace'),
-      domain: DOMAIN,
-      bind: bindTool((handlers, args) => handlers.handleSyscallEbpfTrace(args)),
-    },
-  ],
+  registrations,
   workflowRule: {
     patterns: [
       /\b(syscall|etw|strace|dtrace|kernel|system\s?call)\b/i,
