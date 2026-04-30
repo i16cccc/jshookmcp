@@ -47,14 +47,14 @@ export class RawHttp2Handlers {
         integer: true,
       });
       const rawBody = args.body;
-      const bodyWasObject = rawBody !== null && typeof rawBody !== 'string';
+      const bodyIsObject = rawBody !== null && rawBody !== undefined && typeof rawBody !== 'string';
       const bodyString =
-        typeof rawBody === 'string' ? rawBody : rawBody !== null ? JSON.stringify(rawBody) : '';
+        typeof rawBody === 'string' ? rawBody : bodyIsObject ? JSON.stringify(rawBody) : '';
       const bodyBuffer = Buffer.from(bodyString, 'utf8');
       const alpnProtocols = parseStringArrayHelper(args.alpnProtocols, 'alpnProtocols');
       const requestHeaders = toHttp2RequestHeaders(parseHeaderRecord(args.headers, 'headers'));
 
-      if (bodyWasObject && bodyBuffer.length > 0 && !('content-type' in requestHeaders)) {
+      if (bodyIsObject && bodyBuffer.length > 0 && !('content-type' in requestHeaders)) {
         requestHeaders['content-type'] = 'application/json';
       }
       const authorization = parseNetworkAuthorization(args.authorization);
