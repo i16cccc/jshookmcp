@@ -373,6 +373,53 @@ describe('RawHandlers', () => {
         expect.objectContaining({ success: false }),
       );
     });
+
+    it('auto-stringifies object body and sets content-type to application/json', async () => {
+      state.performHttp2ProbeInternal.mockResolvedValueOnce({
+        responseHeaders: { ':status': 200, 'content-type': 'application/json' },
+        bodyBuffer: Buffer.from('{"ok":true}', 'utf8'),
+        truncated: false,
+        alpnProtocol: 'h2',
+      });
+
+      const result = parseJsonResponse(
+        await handler.handleHttp2Probe({
+          url: 'https://api.example/data',
+          method: 'POST',
+          body: { text: 'decrypt-me' },
+        }),
+      );
+      expect(result.success).toBe(true);
+
+      const callArgs = state.performHttp2ProbeInternal.mock.calls[0]![0] as {
+        bodyBuffer: Buffer;
+        requestHeaders: Record<string, unknown>;
+      };
+      expect(callArgs.bodyBuffer.toString('utf8')).toBe('{"text":"decrypt-me"}');
+      expect(callArgs.requestHeaders['content-type']).toBe('application/json');
+      expect(callArgs.requestHeaders['content-length']).toBe('21');
+    });
+
+    it('preserves explicit content-type header when body is an object', async () => {
+      state.performHttp2ProbeInternal.mockResolvedValueOnce({
+        responseHeaders: { ':status': 200, 'content-type': 'text/plain' },
+        bodyBuffer: Buffer.from('ok', 'utf8'),
+        truncated: false,
+        alpnProtocol: 'h2',
+      });
+
+      await handler.handleHttp2Probe({
+        url: 'https://api.example/data',
+        method: 'POST',
+        body: { key: 'val' },
+        headers: { 'content-type': 'text/plain' },
+      });
+
+      const callArgs = state.performHttp2ProbeInternal.mock.calls[0]![0] as {
+        requestHeaders: Record<string, unknown>;
+      };
+      expect(callArgs.requestHeaders['content-type']).toBe('text/plain');
+    });
   });
 
   describe('handleHttp2FrameBuild', () => {
@@ -583,6 +630,7 @@ describe('RawHandlers', () => {
         isError: true,
       });
 
+      state.dnsResolve.mockResolvedValue(['1.2.3.4']);
       state.traceroute.mockReturnValue({ hops: [{ ttl: 1, host: 'router' }] });
       const tracerouteResponse = parseJsonResponse(
         await handler.handleNetworkTraceroute({ target: 'example.com', maxHops: 5 }),
@@ -599,6 +647,7 @@ describe('RawHandlers', () => {
 
     it('wraps traceroute/probe exceptions in fail responses', async () => {
       state.isIcmpAvailable.mockReturnValue(true);
+      state.dnsResolve.mockResolvedValue(['1.2.3.4']);
       state.traceroute.mockImplementation(() => {
         throw new Error('trace failed');
       });

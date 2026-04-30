@@ -30,6 +30,9 @@ function buildCallToolMetadata(
 }
 
 function attachCallToolMetadata(response: ToolResponse, metadata: CallToolMetadata): ToolResponse {
+  if (!response?.content || !Array.isArray(response.content)) {
+    return response;
+  }
   return {
     ...response,
     content: response.content.map((item) => {

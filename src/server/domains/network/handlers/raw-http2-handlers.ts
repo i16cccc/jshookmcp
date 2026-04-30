@@ -46,12 +46,17 @@ export class RawHttp2Handlers {
         max: 1_048_576,
         integer: true,
       });
-      const bodyBuffer = Buffer.from(
-        parseRawString(args.body, 'body', { allowEmpty: true }) ?? '',
-        'utf8',
-      );
+      const rawBody = args.body;
+      const bodyWasObject = rawBody !== null && typeof rawBody !== 'string';
+      const bodyString =
+        typeof rawBody === 'string' ? rawBody : rawBody !== null ? JSON.stringify(rawBody) : '';
+      const bodyBuffer = Buffer.from(bodyString, 'utf8');
       const alpnProtocols = parseStringArrayHelper(args.alpnProtocols, 'alpnProtocols');
       const requestHeaders = toHttp2RequestHeaders(parseHeaderRecord(args.headers, 'headers'));
+
+      if (bodyWasObject && bodyBuffer.length > 0 && !('content-type' in requestHeaders)) {
+        requestHeaders['content-type'] = 'application/json';
+      }
       const authorization = parseNetworkAuthorization(args.authorization);
 
       const { url, target } = await resolveAuthorizedTransportTarget(

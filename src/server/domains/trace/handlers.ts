@@ -13,6 +13,7 @@ import { type TraceRecorder } from '@modules/trace/TraceRecorder';
 import type { CDPSessionLike } from '@modules/trace/TraceRecorder';
 import { resolveArtifactPath } from '@utils/artifacts';
 import { argEnum } from '@server/domains/shared/parse-args';
+import { R } from '@server/domains/shared/ResponseBuilder';
 import {
   asBoolean,
   asNumber,
@@ -84,18 +85,20 @@ export class TraceToolHandlers {
       },
     });
 
-    return {
-      status: 'recording',
-      sessionId: session.sessionId,
-      dbPath: session.dbPath,
-      network: {
-        recordResponseBodies: recordResponseBodies ?? true,
-        streamResponseChunks: streamResponseChunks ?? true,
-        maxBodyBytes: networkBodyMaxBytes ?? 10 * 1024 * 1024,
-        inlineBodyBytes: networkInlineBodyBytes ?? 256 * 1024,
-      },
-      message: `Recording started. CDP session: ${cdpSession ? 'active' : 'not available'}`,
-    };
+    return R.ok()
+      .merge({
+        status: 'recording',
+        sessionId: session.sessionId,
+        dbPath: session.dbPath,
+        network: {
+          recordResponseBodies: recordResponseBodies ?? true,
+          streamResponseChunks: streamResponseChunks ?? true,
+          maxBodyBytes: networkBodyMaxBytes ?? 10 * 1024 * 1024,
+          inlineBodyBytes: networkInlineBodyBytes ?? 256 * 1024,
+        },
+        message: `Recording started. CDP session: ${cdpSession ? 'active' : 'not available'}`,
+      })
+      .json();
   }
 
   async handleStopTraceRecording(): Promise<unknown> {
@@ -105,23 +108,25 @@ export class TraceToolHandlers {
     const cleanupErrors = session.cleanupErrors ?? [];
     const status = cleanupErrors.length > 0 ? 'stopped_with_errors' : 'stopped';
 
-    return {
-      status,
-      sessionId: session.sessionId,
-      dbPath: session.dbPath,
-      eventCount: session.eventCount,
-      memoryDeltaCount: session.memoryDeltaCount,
-      heapSnapshotCount: session.heapSnapshotCount,
-      networkRequestCount: session.networkRequestCount ?? 0,
-      networkChunkCount: session.networkChunkCount ?? 0,
-      networkBodyCount: session.networkBodyCount ?? 0,
-      durationMs: duration,
-      ...(cleanupErrors.length > 0 ? { cleanupErrors } : {}),
-      message:
-        cleanupErrors.length > 0
-          ? `Recording stopped with cleanup errors. ${session.eventCount} events, ${session.memoryDeltaCount} memory deltas, ${session.heapSnapshotCount} heap snapshots, ${session.networkRequestCount ?? 0} network requests, ${session.networkChunkCount ?? 0} network chunks, ${session.networkBodyCount ?? 0} response bodies recorded.`
-          : `Recording stopped. ${session.eventCount} events, ${session.memoryDeltaCount} memory deltas, ${session.heapSnapshotCount} heap snapshots, ${session.networkRequestCount ?? 0} network requests, ${session.networkChunkCount ?? 0} network chunks, ${session.networkBodyCount ?? 0} response bodies recorded.`,
-    };
+    return R.ok()
+      .merge({
+        status,
+        sessionId: session.sessionId,
+        dbPath: session.dbPath,
+        eventCount: session.eventCount,
+        memoryDeltaCount: session.memoryDeltaCount,
+        heapSnapshotCount: session.heapSnapshotCount,
+        networkRequestCount: session.networkRequestCount ?? 0,
+        networkChunkCount: session.networkChunkCount ?? 0,
+        networkBodyCount: session.networkBodyCount ?? 0,
+        durationMs: duration,
+        ...(cleanupErrors.length > 0 ? { cleanupErrors } : {}),
+        message:
+          cleanupErrors.length > 0
+            ? `Recording stopped with cleanup errors. ${session.eventCount} events, ${session.memoryDeltaCount} memory deltas, ${session.heapSnapshotCount} heap snapshots, ${session.networkRequestCount ?? 0} network requests, ${session.networkChunkCount ?? 0} network chunks, ${session.networkBodyCount ?? 0} response bodies recorded.`
+            : `Recording stopped. ${session.eventCount} events, ${session.memoryDeltaCount} memory deltas, ${session.heapSnapshotCount} heap snapshots, ${session.networkRequestCount ?? 0} network requests, ${session.networkChunkCount ?? 0} network chunks, ${session.networkBodyCount ?? 0} response bodies recorded.`,
+      })
+      .json();
   }
 
   async handleQueryTraceSql(args: Record<string, unknown>): Promise<unknown> {
@@ -150,11 +155,13 @@ export class TraceToolHandlers {
         result = activeDb.query(sql);
       }
 
-      return {
-        columns: result.columns,
-        rows: result.rows,
-        rowCount: result.rowCount,
-      };
+      return R.ok()
+        .merge({
+          columns: result.columns,
+          rows: result.rows,
+          rowCount: result.rowCount,
+        })
+        .json();
     } finally {
       if (tempDb) {
         tempDb.close();
@@ -228,42 +235,45 @@ export class TraceToolHandlers {
             )
           : null;
 
-      return {
-        seekTimestamp: timestamp,
-        timeDomain,
-        windowMs,
-        events: events.map(formatTraceEvent),
-        debuggerState: {
-          recentEvents: debuggerEventsResult.rows.map((row) =>
-            rowToObject(debuggerEventsResult.columns, row),
-          ),
-        },
-        memoryState: {
-          addressValues:
-            memoryStateResult?.rows.map((row) => rowToObject(memoryStateResult.columns, row)) ?? [],
+      return R.ok()
+        .merge({
+          seekTimestamp: timestamp,
+          timeDomain,
+          windowMs,
+          events: events.map(formatTraceEvent),
+          debuggerState: {
+            recentEvents: debuggerEventsResult.rows.map((row) =>
+              rowToObject(debuggerEventsResult.columns, row),
+            ),
+          },
+          memoryState: {
+            addressValues:
+              memoryStateResult?.rows.map((row) => rowToObject(memoryStateResult.columns, row)) ??
+              [],
+            ...(timeDomain === 'monotonic'
+              ? {
+                  omittedReason:
+                    'Memory state is only indexed by wall-clock timestamps and is omitted for monotonic seeks.',
+                }
+              : {}),
+          },
+          networkState: {
+            completedRequests: networkResult.rows.map((row) =>
+              rowToObject(networkResult.columns, row),
+            ),
+          },
+          nearestHeapSnapshot:
+            snapshotResult && snapshotResult.rows.length > 0
+              ? rowToObject(snapshotResult.columns, snapshotResult.rows[0]!)
+              : null,
           ...(timeDomain === 'monotonic'
             ? {
-                omittedReason:
-                  'Memory state is only indexed by wall-clock timestamps and is omitted for monotonic seeks.',
+                nearestHeapSnapshotOmittedReason:
+                  'Heap snapshots are only indexed by wall-clock timestamps and are omitted for monotonic seeks.',
               }
             : {}),
-        },
-        networkState: {
-          completedRequests: networkResult.rows.map((row) =>
-            rowToObject(networkResult.columns, row),
-          ),
-        },
-        nearestHeapSnapshot:
-          snapshotResult && snapshotResult.rows.length > 0
-            ? rowToObject(snapshotResult.columns, snapshotResult.rows[0]!)
-            : null,
-        ...(timeDomain === 'monotonic'
-          ? {
-              nearestHeapSnapshotOmittedReason:
-                'Heap snapshots are only indexed by wall-clock timestamps and are omitted for monotonic seeks.',
-            }
-          : {}),
-      };
+        })
+        .json();
     } finally {
       if (tempDb) tempDb.close();
     }
@@ -310,7 +320,7 @@ export class TraceToolHandlers {
         ? await readTraceBody(resource, { maxBodyBytes, returnSummary })
         : null;
 
-      return smartHandleDetailed(this.ctx, {
+      const flowData = smartHandleDetailed(this.ctx, {
         requestId,
         request: formatNetworkResource(resource),
         body,
@@ -325,6 +335,9 @@ export class TraceToolHandlers {
           : null,
         events: includeEvents ? events.map(formatTraceEvent) : null,
       });
+      return R.ok()
+        .merge(flowData as Record<string, unknown>)
+        .json();
     } finally {
       if (tempDb) tempDb.close();
     }
@@ -395,29 +408,31 @@ export class TraceToolHandlers {
       const totalSize1 = (summary1['totalSize'] as number) ?? 0;
       const totalSize2 = (summary2['totalSize'] as number) ?? 0;
 
-      return {
-        snapshot1: {
-          id: snap1Row['id'],
-          timestamp: snap1Row['timestamp'],
-          totalSize: totalSize1,
-          nodeCount: summary1['nodeCount'] ?? 0,
-        },
-        snapshot2: {
-          id: snap2Row['id'],
-          timestamp: snap2Row['timestamp'],
-          totalSize: totalSize2,
-          nodeCount: summary2['nodeCount'] ?? 0,
-        },
-        diff: {
-          added: added.slice(0, 50),
-          removed: removed.slice(0, 50),
-          changed: changed.slice(0, 100),
-          totalSizeDelta: totalSize2 - totalSize1,
-          addedCount: added.length,
-          removedCount: removed.length,
-          changedCount: changed.length,
-        },
-      };
+      return R.ok()
+        .merge({
+          snapshot1: {
+            id: snap1Row['id'],
+            timestamp: snap1Row['timestamp'],
+            totalSize: totalSize1,
+            nodeCount: summary1['nodeCount'] ?? 0,
+          },
+          snapshot2: {
+            id: snap2Row['id'],
+            timestamp: snap2Row['timestamp'],
+            totalSize: totalSize2,
+            nodeCount: summary2['nodeCount'] ?? 0,
+          },
+          diff: {
+            added: added.slice(0, 50),
+            removed: removed.slice(0, 50),
+            changed: changed.slice(0, 100),
+            totalSizeDelta: totalSize2 - totalSize1,
+            addedCount: added.length,
+            removedCount: removed.length,
+            changedCount: changed.length,
+          },
+        })
+        .json();
     } finally {
       if (tempDb) tempDb.close();
     }
@@ -473,12 +488,14 @@ export class TraceToolHandlers {
 
       await writeFile(finalOutputPath, JSON.stringify(traceEvents, null, 2), 'utf-8');
 
-      return {
-        exportedPath: finalOutputPath,
-        eventCount: traceEvents.length,
-        format: 'Chrome Trace Event JSON',
-        message: `Exported ${traceEvents.length} events to ${finalOutputPath}. Open in chrome://tracing or ui.perfetto.dev`,
-      };
+      return R.ok()
+        .merge({
+          exportedPath: finalOutputPath,
+          eventCount: traceEvents.length,
+          format: 'Chrome Trace Event JSON',
+          message: `Exported ${traceEvents.length} events to ${finalOutputPath}. Open in chrome://tracing or ui.perfetto.dev`,
+        })
+        .json();
     } finally {
       if (tempDb) tempDb.close();
     }
@@ -534,18 +551,20 @@ export class TraceToolHandlers {
          FROM network_resources`,
       );
 
-      return {
-        events: summarizeEvents(events, detail),
-        memory: summarizeMemoryDeltas(deltas),
-        network:
-          networkSummary.rows.length > 0
-            ? rowToObject(networkSummary.columns, networkSummary.rows[0]!)
-            : { requestCount: 0, chunkCount: 0, bodyCount: 0 },
-        metadata: {
-          dbPath: dbPath ?? 'active recording',
-          generatedAt: new Date().toISOString(),
-        },
-      };
+      return R.ok()
+        .merge({
+          events: summarizeEvents(events, detail),
+          memory: summarizeMemoryDeltas(deltas),
+          network:
+            networkSummary.rows.length > 0
+              ? rowToObject(networkSummary.columns, networkSummary.rows[0]!)
+              : { requestCount: 0, chunkCount: 0, bodyCount: 0 },
+          metadata: {
+            dbPath: dbPath ?? 'active recording',
+            generatedAt: new Date().toISOString(),
+          },
+        })
+        .json();
     } finally {
       if (shouldClose) {
         db.close();

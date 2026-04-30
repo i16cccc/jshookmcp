@@ -7,6 +7,11 @@ import { TraceRecorder } from '@modules/trace/TraceRecorder';
 import { TraceDB } from '@modules/trace/TraceDB';
 import type { MCPServerContext } from '@server/MCPServer.context';
 
+const parseToolResponse = <T>(response: unknown): T => {
+  const r = response as { content?: Array<{ text?: string }> };
+  return JSON.parse(r?.content?.[0]?.text ?? '{}') as T;
+};
+
 vi.mock('@utils/artifacts', () => ({
   resolveArtifactPath: async () => ({ absolutePath: '/tmp/auto.json' }),
 }));
@@ -91,9 +96,11 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleQueryTraceSql({
-        sql: "SELECT * FROM events WHERE category = 'debugger'",
-      })) as { rowCount: number; columns: string[] };
+      const result = parseToolResponse<{ rowCount: number; columns: string[] }>(
+        await handler.handleQueryTraceSql({
+          sql: "SELECT * FROM events WHERE category = 'debugger'",
+        }),
+      );
 
       expect(result.rowCount).toBe(1);
       expect(result.columns).toContain('timestamp');
@@ -137,10 +144,12 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleQueryTraceSql({
-        sql: 'SELECT COUNT(*) as cnt FROM events',
-        dbPath,
-      })) as { rows: any[][] };
+      const result = parseToolResponse<{ rows: any[][] }>(
+        await handler.handleQueryTraceSql({
+          sql: 'SELECT COUNT(*) as cnt FROM events',
+          dbPath,
+        }),
+      );
 
       expect(result.rows[0]![0]).toBe(1);
     });
@@ -194,17 +203,19 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleSeekToTimestamp({
-        timestamp: 1000,
-        dbPath,
-        windowMs: 100,
-      })) as {
+      const result = parseToolResponse<{
         seekTimestamp: number;
         events: any[];
         debuggerState: { recentEvents: any[] };
         memoryState: { addressValues: any[] };
         networkState: { completedRequests: any[] };
-      };
+      }>(
+        await handler.handleSeekToTimestamp({
+          timestamp: 1000,
+          dbPath,
+          windowMs: 100,
+        }),
+      );
 
       expect(result.seekTimestamp).toBe(1000);
       expect(result.events.length).toBeGreaterThanOrEqual(1);
@@ -249,17 +260,19 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleSeekToTimestamp({
-        timestamp: 20,
-        dbPath,
-        windowMs: 10,
-        timeDomain: 'monotonic',
-      })) as {
+      const result = parseToolResponse<{
         events: any[];
         memoryState: { addressValues: any[]; omittedReason?: string };
         nearestHeapSnapshot: Record<string, unknown> | null;
         nearestHeapSnapshotOmittedReason?: string;
-      };
+      }>(
+        await handler.handleSeekToTimestamp({
+          timestamp: 20,
+          dbPath,
+          windowMs: 10,
+          timeDomain: 'monotonic',
+        }),
+      );
 
       expect(result.events.length).toBe(1);
       expect(result.memoryState.addressValues).toEqual([]);
@@ -285,11 +298,13 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleSeekToTimestamp({
-        timestamp: 1000,
-        dbPath,
-        windowMs: 100,
-      })) as { events: any[] };
+      const result = parseToolResponse<{ events: any[] }>(
+        await handler.handleSeekToTimestamp({
+          timestamp: 1000,
+          dbPath,
+          windowMs: 100,
+        }),
+      );
 
       expect(result.events[0].data).toBe('{invalid:json');
     });
@@ -314,11 +329,13 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleSeekToTimestamp({
-        timestamp: 1000,
-        dbPath,
-        windowMs: 50,
-      })) as { nearestHeapSnapshot: null | Record<string, unknown> };
+      const result = parseToolResponse<{ nearestHeapSnapshot: null | Record<string, unknown> }>(
+        await handler.handleSeekToTimestamp({
+          timestamp: 1000,
+          dbPath,
+          windowMs: 50,
+        }),
+      );
 
       expect(result.nearestHeapSnapshot).toBeNull();
     });
@@ -348,7 +365,9 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleSeekToTimestamp({ timestamp: 1000 })) as any;
+      const result = parseToolResponse<{ events: any[] }>(
+        await handler.handleSeekToTimestamp({ timestamp: 1000 }),
+      );
       expect(result.events.length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -427,17 +446,19 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleGetTraceNetworkFlow({
-        requestId: 'req-trace',
-        dbPath,
-        maxBodyBytes: 1024,
-      })) as {
+      const result = parseToolResponse<{
         requestId: string;
         request: { protocol: string };
         body: { summary: { truncated: boolean } };
         chunks: { total: number; returned: number };
         events: Array<{ eventType: string }>;
-      };
+      }>(
+        await handler.handleGetTraceNetworkFlow({
+          requestId: 'req-trace',
+          dbPath,
+          maxBodyBytes: 1024,
+        }),
+      );
 
       expect(result.requestId).toBe('req-trace');
       expect(result.request.protocol).toBe('h2');
@@ -477,18 +498,20 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleDiffHeapSnapshots({
-        snapshotId1: 1,
-        snapshotId2: 2,
-        dbPath,
-      })) as {
+      const result = parseToolResponse<{
         diff: {
           added: Array<{ name: string }>;
           removed: any[];
           changed: Array<{ name: string; delta: number }>;
           totalSizeDelta: number;
         };
-      };
+      }>(
+        await handler.handleDiffHeapSnapshots({
+          snapshotId1: 1,
+          snapshotId2: 2,
+          dbPath,
+        }),
+      );
 
       expect(result.diff.totalSizeDelta).toBe(500);
       expect(result.diff.added.some((a) => a.name === 'String')).toBe(true);
@@ -515,10 +538,12 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleDiffHeapSnapshots({
-        snapshotId1: 1,
-        snapshotId2: 2,
-      })) as any;
+      const result = parseToolResponse<Record<string, any>>(
+        await handler.handleDiffHeapSnapshots({
+          snapshotId1: 1,
+          snapshotId2: 2,
+        }),
+      );
 
       expect(result.diff.changedCount).toBe(0);
     });
@@ -543,11 +568,13 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleDiffHeapSnapshots({
-        snapshotId1: 1,
-        snapshotId2: 2,
-        dbPath,
-      })) as any;
+      const result = parseToolResponse<Record<string, any>>(
+        await handler.handleDiffHeapSnapshots({
+          snapshotId1: 1,
+          snapshotId2: 2,
+          dbPath,
+        }),
+      );
 
       expect(result.diff.removed.some((r: any) => r.name === 'ObjectToRemove')).toBe(true);
     });
@@ -580,11 +607,15 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleDiffHeapSnapshots({
-        snapshotId1: 1,
-        snapshotId2: 2,
-        dbPath,
-      })) as { diff: { changed: Array<{ name: string; delta: number }> } };
+      const result = parseToolResponse<{
+        diff: { changed: Array<{ name: string; delta: number }> };
+      }>(
+        await handler.handleDiffHeapSnapshots({
+          snapshotId1: 1,
+          snapshotId2: 2,
+          dbPath,
+        }),
+      );
 
       expect(result.diff.changed.some((c) => c.name === 'ChangedObject')).toBe(true);
       expect(result.diff.changed.find((c) => c.name === 'ChangedObject')?.delta).toBe(3);
@@ -681,10 +712,16 @@ describe('TraceToolHandlers', () => {
       const outputPath = join(tmpdir(), `test-export-${Date.now()}.json`);
       cleanupPaths.push(outputPath);
 
-      const result = (await handler.handleExportTrace({
-        dbPath,
-        outputPath,
-      })) as { eventCount: number; format: string; exportedPath: string };
+      const result = parseToolResponse<{
+        eventCount: number;
+        format: string;
+        exportedPath: string;
+      }>(
+        await handler.handleExportTrace({
+          dbPath,
+          outputPath,
+        }),
+      );
 
       expect(result.eventCount).toBe(3);
       expect(result.format).toBe('Chrome Trace Event JSON');
@@ -728,9 +765,11 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleExportTrace({
-        dbPath,
-      })) as { exportedPath: string };
+      const result = parseToolResponse<{ exportedPath: string }>(
+        await handler.handleExportTrace({
+          dbPath,
+        }),
+      );
 
       expect(result.exportedPath).toBe('/tmp/auto.json');
     });
@@ -752,7 +791,9 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleStartTraceRecording({})) as any;
+      const result = parseToolResponse<Record<string, unknown>>(
+        await handler.handleStartTraceRecording({}),
+      );
       expect(result.status).toBe('recording');
       expect(result.sessionId).toBe('sess-1');
     });
@@ -777,7 +818,9 @@ describe('TraceToolHandlers', () => {
       } as any;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleStartTraceRecording({})) as any;
+      const result = parseToolResponse<Record<string, unknown>>(
+        await handler.handleStartTraceRecording({}),
+      );
       expect(result.message).toContain('active');
     });
 
@@ -793,7 +836,9 @@ describe('TraceToolHandlers', () => {
       } as any;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleStartTraceRecording({})) as any;
+      const result = parseToolResponse<Record<string, unknown>>(
+        await handler.handleStartTraceRecording({}),
+      );
       expect(result.status).toBe('recording');
       expect(result.message).toContain('not available');
     });
@@ -815,7 +860,9 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleStopTraceRecording()) as any;
+      const result = parseToolResponse<Record<string, unknown>>(
+        await handler.handleStopTraceRecording(),
+      );
       expect(result.status).toBe('stopped');
       expect(result.durationMs).toBe(1000);
       expect(result.eventCount).toBe(5);
@@ -848,7 +895,9 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleSummarizeTrace({ detail: 'summary' })) as any;
+      const result = parseToolResponse<{ events: any; memory: any; metadata: { dbPath: string } }>(
+        await handler.handleSummarizeTrace({ detail: 'summary' }),
+      );
       expect(result.events).toBeDefined();
       expect(result.memory).toBeDefined();
       expect(result.metadata.dbPath).toContain('active recording');
@@ -862,7 +911,9 @@ describe('TraceToolHandlers', () => {
       // @ts-expect-error
       db.close();
 
-      const result = (await handler.handleSummarizeTrace({ dbPath })) as any;
+      const result = parseToolResponse<{ metadata: { dbPath: string } }>(
+        await handler.handleSummarizeTrace({ dbPath }),
+      );
       expect(result.metadata.dbPath).toBe(dbPath);
     });
 
@@ -910,7 +961,9 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleSummarizeTrace({})) as any;
+      const result = parseToolResponse<{ events: { categories: any[]; totalEvents: number } }>(
+        await handler.handleSummarizeTrace({}),
+      );
       // safeParseJSON converts the string '{"requestId":"1"}' to an object internally;
       // the summary aggregates by category so we verify the network category appears
       expect(result.events.categories.find((c: any) => c.category === 'network')).toBeDefined();
@@ -932,7 +985,9 @@ describe('TraceToolHandlers', () => {
       } as any;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleStartTraceRecording({})) as any;
+      const result = parseToolResponse<Record<string, unknown>>(
+        await handler.handleStartTraceRecording({}),
+      );
       expect(result.status).toBe('recording');
       expect(result.message).toContain('not available');
     });
@@ -953,7 +1008,9 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleStopTraceRecording()) as any;
+      const result = parseToolResponse<Record<string, unknown>>(
+        await handler.handleStopTraceRecording(),
+      );
       expect(result.status).toBe('stopped');
       expect(result.durationMs).toBe(0);
     });
@@ -973,7 +1030,9 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleStopTraceRecording()) as any;
+      const result = parseToolResponse<Record<string, unknown>>(
+        await handler.handleStopTraceRecording(),
+      );
       expect(result.status).toBe('stopped_with_errors');
       expect(result.cleanupErrors).toEqual(['Runtime.disable failed: disable failed']);
     });
@@ -1005,11 +1064,13 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleSeekToTimestamp({
-        timestamp: 1000,
-        dbPath,
-        windowMs: 100,
-      })) as { nearestHeapSnapshot: Record<string, unknown> | null };
+      const result = parseToolResponse<{ nearestHeapSnapshot: Record<string, unknown> | null }>(
+        await handler.handleSeekToTimestamp({
+          timestamp: 1000,
+          dbPath,
+          windowMs: 100,
+        }),
+      );
 
       expect(result.nearestHeapSnapshot).not.toBeNull();
       expect(result.nearestHeapSnapshot).toBeDefined();
@@ -1039,11 +1100,13 @@ describe('TraceToolHandlers', () => {
       const ctx = createMockContext() as MCPServerContext;
       const handler = new TraceToolHandlers(recorder, ctx);
 
-      const result = (await handler.handleDiffHeapSnapshots({
-        snapshotId1: 1,
-        snapshotId2: 2,
-        dbPath,
-      })) as any;
+      const result = parseToolResponse<Record<string, any>>(
+        await handler.handleDiffHeapSnapshots({
+          snapshotId1: 1,
+          snapshotId2: 2,
+          dbPath,
+        }),
+      );
 
       // ObjectX went from 5 to 0 — should appear in removed
       expect(result.diff.removed.some((r: any) => r.name === 'ObjectX')).toBe(true);

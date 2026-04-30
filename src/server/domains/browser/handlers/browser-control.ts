@@ -264,6 +264,9 @@ export class BrowserControlHandlers {
       const launchRequest = this.parseChromeLaunchRequest(args);
       try {
         const launch = await this.deps.collector.launch(launchRequest);
+        if (launch.action === 'relaunched') {
+          this.markMonitoringContextChanged('browser_launch_relaunch');
+        }
         const status = await this.deps.collector.getStatus();
 
         return R.ok()

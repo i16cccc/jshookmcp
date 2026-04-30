@@ -1,3 +1,4 @@
+import * as dns from 'node:dns/promises';
 import * as http from 'node:http';
 import * as https from 'node:https';
 import * as net from 'node:net';
@@ -111,6 +112,10 @@ export class RawLatencyHandlers {
       if (!target) {
         return R.text('target is required', true);
       }
+      const resolvedTarget = await resolveHostname(target);
+      if (!resolvedTarget) {
+        return R.fail(`Could not resolve hostname: ${target}`).json();
+      }
       const maxHops = clamp(args.maxHops !== undefined ? Number(args.maxHops) : 30, 1, 64);
       const timeout = clamp(args.timeout !== undefined ? Number(args.timeout) : 5000, 100, 30000);
       const packetSize = clamp(
@@ -119,8 +124,10 @@ export class RawLatencyHandlers {
         65500,
       );
 
-      const result = traceroute({ target, maxHops, timeout, packetSize });
-      return R.ok().json(result as unknown as Record<string, unknown>);
+      const result = traceroute({ target: resolvedTarget, maxHops, timeout, packetSize });
+      return R.ok()
+        .merge({ resolvedFrom: target })
+        .json(result as unknown as Record<string, unknown>);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return R.fail(`Traceroute failed: ${message}`).json();
@@ -139,6 +146,10 @@ export class RawLatencyHandlers {
       if (!target) {
         return R.text('target is required', true);
       }
+      const resolvedTarget = await resolveHostname(target);
+      if (!resolvedTarget) {
+        return R.fail(`Could not resolve hostname: ${target}`).json();
+      }
       const ttl = clamp(args.ttl !== undefined ? Number(args.ttl) : 128, 1, 255);
       const timeout = clamp(args.timeout !== undefined ? Number(args.timeout) : 5000, 100, 30000);
       const packetSize = clamp(
@@ -147,8 +158,10 @@ export class RawLatencyHandlers {
         65500,
       );
 
-      const result = icmpProbe({ target, ttl, packetSize, timeout });
-      return R.ok().json(result as unknown as Record<string, unknown>);
+      const result = icmpProbe({ target: resolvedTarget, ttl, packetSize, timeout });
+      return R.ok()
+        .merge({ resolvedFrom: target })
+        .json(result as unknown as Record<string, unknown>);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return R.fail(`ICMP probe failed: ${message}`).json();
@@ -286,5 +299,15 @@ export class RawLatencyHandlers {
       });
       request.end();
     });
+  }
+}
+
+async function resolveHostname(target: string): Promise<string | null> {
+  if (net.isIPv4(target)) return target;
+  try {
+    const result = await dns.resolve(target, 'A');
+    return result[0] ?? null;
+  } catch {
+    return null;
   }
 }

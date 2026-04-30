@@ -7,7 +7,7 @@ export const probeTools: Tool[] = [
       .desc(
         'ICMP traceroute with per-hop RTT and error classification. Windows: no admin required. Linux/macOS: requires root or CAP_NET_RAW.',
       )
-      .string('target', 'Target IP address to trace route to')
+      .string('target', 'Target hostname or IP address to trace route to')
       .number('maxHops', 'Maximum number of hops (1-64). Default: 30', {
         default: 30,
         minimum: 1,
@@ -31,7 +31,7 @@ export const probeTools: Tool[] = [
       .desc(
         'ICMP echo probe with TTL control and error classification. Windows: no admin required. Linux/macOS: requires root or CAP_NET_RAW.',
       )
-      .string('target', 'Target IP address to probe')
+      .string('target', 'Target hostname or IP address to probe')
       .number('ttl', 'Time-to-live value (1-255). Default: 128', {
         default: 128,
         minimum: 1,
