@@ -86,6 +86,7 @@ const coverageExclude = [
   'src/server/domains/process/handlers.base.ts',
   'src/server/domains/process/handlers.base.process.ts',
   'src/server/domains/network/handlers.impl.core.runtime.raw.ts',
+  'src/server/domains/network/handlers/raw-runtime-helpers.ts',
   'src/server/domains/network/handlers.impl.core.runtime.replay.ts',
   'src/server/domains/network/handlers.impl.core.runtime.intercept.ts',
   'src/server/domains/network/handlers.impl.core.runtime.performance.ts',
