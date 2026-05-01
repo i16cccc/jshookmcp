@@ -78,9 +78,9 @@ const REPEAT_GUARD_EXCLUDES = new Set([
 
 /** Suggested alternative tools per domain prefix when a repeat loop is detected. */
 const DOMAIN_ALTERNATIVES: ReadonlyMap<string, readonly string[]> = new Map([
-  ['stealth', ['page_navigate', 'page_screenshot', 'stealth_verify']],
-  ['page', ['dom_get_structure', 'page_screenshot', 'console_get_logs']],
-  ['console', ['page_evaluate', 'page_screenshot']],
+  ['stealth', ['page_navigate', 'page_evaluate', 'stealth_verify', 'page_screenshot']],
+  ['page', ['page_evaluate', 'browser_jsdom_parse', 'console_get_logs', 'page_screenshot']],
+  ['console', ['page_evaluate', 'console_get_logs', 'page_screenshot']],
   ['network', ['network_get_requests', 'page_navigate']],
   ['captcha', ['captcha_wait', 'page_screenshot']],
   ['ai_hook', ['manage_hooks', 'page_evaluate', 'ai_hook_inject']],
@@ -239,7 +239,7 @@ export class ToolCallContextGuard {
     response: T,
   ): void {
     const prefix = toolName.split('_')[0] ?? '';
-    const alternatives = DOMAIN_ALTERNATIVES.get(prefix) ?? ['page_navigate', 'page_screenshot'];
+    const alternatives = DOMAIN_ALTERNATIVES.get(prefix) ?? ['page_navigate', 'page_evaluate'];
     // Filter out the repeated tool itself from suggestions
     const suggestions = alternatives.filter((t) => t !== toolName);
 

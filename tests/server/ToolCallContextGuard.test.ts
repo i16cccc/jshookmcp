@@ -422,7 +422,8 @@ describe('ToolCallContextGuard', () => {
       const enriched = guard.enrichResponse('page_navigate', response);
       const parsed = JSON.parse(getText(enriched));
 
-      expect(parsed._repeatWarning.suggestedTools).toContain('dom_get_structure');
+      expect(parsed._repeatWarning.suggestedTools).toContain('page_evaluate');
+      expect(parsed._repeatWarning.suggestedTools).toContain('browser_jsdom_parse');
       expect(parsed._repeatWarning.suggestedTools).not.toContain('page_navigate');
     });
 

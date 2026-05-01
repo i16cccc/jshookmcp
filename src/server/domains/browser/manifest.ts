@@ -111,8 +111,16 @@ const manifest = {
       /(浏览器|页面|导航|截图|点击|输入|爬取)/i,
     ],
     priority: 90,
-    tools: ['page_navigate', 'page_screenshot', 'page_click', 'page_type', 'page_evaluate'],
-    hint: 'Browser automation workflow: bootstrap browser/page state -> navigate -> interact -> extract data',
+    tools: [
+      'page_navigate',
+      'page_evaluate',
+      'browser_jsdom_parse',
+      'console_get_logs',
+      'page_click',
+      'page_type',
+      'page_screenshot',
+    ],
+    hint: 'Browser automation workflow: bootstrap browser/page state -> inspect page state -> interact -> capture visual evidence only when needed',
   },
 
   prerequisites: {

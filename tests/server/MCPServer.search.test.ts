@@ -85,7 +85,15 @@ vi.mock('@server/registry/index', () => ({
       workflowRule: {
         patterns: [/(browser|page|navigate|screenshot|click|type|scrape)/i],
         priority: 90,
-        tools: ['page_navigate', 'page_screenshot', 'page_click', 'page_type', 'page_evaluate'],
+        tools: [
+          'page_navigate',
+          'page_evaluate',
+          'browser_jsdom_parse',
+          'console_get_logs',
+          'page_click',
+          'page_type',
+          'page_screenshot',
+        ],
         hint: 'Browser automation workflow',
       },
       prerequisites: {
