@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate registry index
+        run: node scripts/generate-domains-index.mjs
+
       - name: Verify
         run: pnpm run check
 
@@ -79,6 +82,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Generate registry index
+        run: node scripts/generate-domains-index.mjs
 
       - name: Verify and build SDK
         run: |
