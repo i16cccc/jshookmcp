@@ -15,44 +15,23 @@ export const consoleTools: Tool[] = [
   ),
   tool('console_inject', (t) =>
     t
-      .desc(
-        `Inject an in-page monitor/interceptor. Types:
-- script: Track dynamically created script elements
-- xhr: Capture AJAX request/response data
-- fetch: Capture fetch() calls (useful when CDP misses wrapped fetch)
-- function: Proxy-based tracer for a named global function (requires functionName)`,
-      )
+      .desc('Inject an in-page script, XHR, fetch, or function monitor.')
       .enum('type', ['script', 'xhr', 'fetch', 'function'], 'Injection type')
-      .string(
-        'functionName',
-        'Global function path to trace (type=function, e.g. "window.someFunction")',
-      )
-      .boolean(
-        'persistent',
-        'Survive page navigations via evaluateOnNewDocument (default: false)',
-        { default: false },
-      )
+      .string('functionName', 'Global function path to trace')
+      .boolean('persistent', 'Keep the injection across page navigations', { default: false })
       .required('type')
       .openWorld(),
   ),
   tool('console_inject_fetch_interceptor', (t) =>
     t
-      .desc('Inject the fetch() interceptor directly')
-      .boolean(
-        'persistent',
-        'Survive page navigations via evaluateOnNewDocument (default: false)',
-        { default: false },
-      )
+      .desc('Inject a fetch interceptor.')
+      .boolean('persistent', 'Keep the injection across page navigations', { default: false })
       .openWorld(),
   ),
   tool('console_inject_xhr_interceptor', (t) =>
     t
-      .desc('Inject the XMLHttpRequest interceptor directly')
-      .boolean(
-        'persistent',
-        'Survive page navigations via evaluateOnNewDocument (default: false)',
-        { default: false },
-      )
+      .desc('Inject an XMLHttpRequest interceptor.')
+      .boolean('persistent', 'Keep the injection across page navigations', { default: false })
       .openWorld(),
   ),
   tool('console_buffers', (t) =>

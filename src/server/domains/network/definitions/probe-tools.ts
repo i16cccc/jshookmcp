@@ -4,21 +4,19 @@ import { tool } from '@server/registry/tool-builder';
 export const probeTools: Tool[] = [
   tool('network_traceroute', (t) =>
     t
-      .desc(
-        'ICMP traceroute with per-hop RTT and error classification. Windows: no admin required. Linux/macOS: requires root or CAP_NET_RAW.',
-      )
+      .desc('Run an ICMP traceroute.')
       .string('target', 'Target hostname or IP address to trace route to')
-      .number('maxHops', 'Maximum number of hops (1-64). Default: 30', {
+      .number('maxHops', 'Maximum number of hops', {
         default: 30,
         minimum: 1,
         maximum: 64,
       })
-      .number('timeout', 'Per-hop timeout in milliseconds (100-30000). Default: 5000', {
+      .number('timeout', 'Per-hop timeout in milliseconds', {
         default: 5000,
         minimum: 100,
         maximum: 30000,
       })
-      .number('packetSize', 'ICMP echo request payload size in bytes (8-65500). Default: 32', {
+      .number('packetSize', 'ICMP echo request payload size in bytes', {
         default: 32,
         minimum: 8,
         maximum: 65500,
@@ -28,21 +26,19 @@ export const probeTools: Tool[] = [
   ),
   tool('network_icmp_probe', (t) =>
     t
-      .desc(
-        'ICMP echo probe with TTL control and error classification. Windows: no admin required. Linux/macOS: requires root or CAP_NET_RAW.',
-      )
+      .desc('Run an ICMP echo probe.')
       .string('target', 'Target hostname or IP address to probe')
-      .number('ttl', 'Time-to-live value (1-255). Default: 128', {
+      .number('ttl', 'Time-to-live value', {
         default: 128,
         minimum: 1,
         maximum: 255,
       })
-      .number('packetSize', 'ICMP echo request payload size in bytes (8-65500). Default: 32', {
+      .number('packetSize', 'ICMP echo request payload size in bytes', {
         default: 32,
         minimum: 8,
         maximum: 65500,
       })
-      .number('timeout', 'Timeout in milliseconds (100-30000). Default: 5000', {
+      .number('timeout', 'Timeout in milliseconds', {
         default: 5000,
         minimum: 100,
         maximum: 30000,

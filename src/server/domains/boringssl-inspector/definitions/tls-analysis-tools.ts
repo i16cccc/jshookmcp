@@ -6,7 +6,7 @@ export const tlsAnalysisTools: Tool[] = [
   objectTool('tls_keylog_parse', 'Parse an SSLKEYLOGFILE and summarize available key material.', {
     path: {
       type: 'string',
-      description: 'Path to SSLKEYLOGFILE (uses default if omitted)',
+      description: 'Path to SSLKEYLOGFILE',
     },
   }),
   objectTool(
@@ -15,7 +15,7 @@ export const tlsAnalysisTools: Tool[] = [
     {
       path: {
         type: 'string',
-        description: 'Specific path to disable (uses current path if omitted)',
+        description: 'Path to disable',
       },
     },
   ),
@@ -37,12 +37,12 @@ export const tlsAnalysisTools: Tool[] = [
       },
       algorithm: {
         type: 'string',
-        description: 'Cipher algorithm (default: aes-256-gcm)',
+        description: 'Cipher algorithm',
         default: 'aes-256-gcm',
       },
       authTagHex: {
         type: 'string',
-        description: 'Hex-encoded authentication tag (for AEAD ciphers)',
+        description: 'Hex-encoded authentication tag',
       },
     },
     ['encryptedHex', 'keyHex', 'nonceHex'],
@@ -53,7 +53,7 @@ export const tlsAnalysisTools: Tool[] = [
     {
       content: {
         type: 'string',
-        description: 'Inline keylog content to summarize (uses file if omitted)',
+        description: 'Inline keylog content to summarize',
       },
     },
   ),
@@ -67,7 +67,7 @@ export const tlsAnalysisTools: Tool[] = [
       },
       label: {
         type: 'string',
-        description: 'Optional label filter (e.g. CLIENT_RANDOM)',
+        description: 'Optional label filter',
       },
     },
     ['clientRandom'],
@@ -86,7 +86,7 @@ export const tlsAnalysisTools: Tool[] = [
   ),
   objectTool(
     'tls_parse_handshake',
-    'Parse TLS record header and handshake metadata (version, cipher suites, SNI, extensions) from raw hex. Optionally decrypts payload preview when keylog is available.',
+    'Parse TLS handshake metadata from raw hex.',
     {
       rawHex: {
         type: 'string',
@@ -94,12 +94,12 @@ export const tlsAnalysisTools: Tool[] = [
       },
       decrypt: {
         type: 'boolean',
-        description: 'If true, attempt payload decryption using loaded keylog (default: false)',
+        description: 'Attempt payload decryption using the loaded keylog',
       },
     },
     ['rawHex'],
   ),
-  objectTool('tls_cipher_suites', 'List IANA TLS cipher suites, optionally filtered by keyword.', {
+  objectTool('tls_cipher_suites', 'List TLS cipher suites.', {
     filter: {
       type: 'string',
       description: 'Keyword filter for cipher suite names',
@@ -118,7 +118,7 @@ export const tlsAnalysisTools: Tool[] = [
   ),
   objectTool(
     'tls_probe_endpoint',
-    'Connect to a TLS endpoint and report certificate chain basics, trust result, ALPN, protocol, cipher, and SNI/hostname validation details for authorized target testing.',
+    'Probe a TLS endpoint and report handshake and certificate details.',
     {
       host: {
         type: 'string',
@@ -127,7 +127,7 @@ export const tlsAnalysisTools: Tool[] = [
       port: {
         type: 'number',
         default: 443,
-        description: 'Target TLS port (default: 443)',
+        description: 'Target TLS port',
       },
       servername: {
         type: 'string',
@@ -136,7 +136,7 @@ export const tlsAnalysisTools: Tool[] = [
       alpnProtocols: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Optional ALPN protocols to offer, in preference order',
+        description: 'Optional ALPN protocols to offer',
       },
       timeoutMs: {
         type: 'number',
@@ -155,11 +155,11 @@ export const tlsAnalysisTools: Tool[] = [
       },
       caPem: {
         type: 'string',
-        description: 'Optional PEM-encoded CA bundle used for trust evaluation',
+        description: 'Optional PEM-encoded CA bundle',
       },
       caPath: {
         type: 'string',
-        description: 'Optional path to a PEM-encoded CA bundle used for trust evaluation',
+        description: 'Optional path to a PEM-encoded CA bundle',
       },
       allowInvalidCertificates: {
         type: 'boolean',

@@ -2,90 +2,85 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { objectTool, TLS_VERSION_VALUES } from './support';
 
 export const websocketTools: Tool[] = [
-  objectTool(
-    'websocket_open',
-    'Open a stateful WebSocket session over ws or wss, perform the client handshake, and return a sessionId.',
-    {
-      url: {
-        type: 'string',
-        description: 'Full ws:// or wss:// URL (mutually exclusive with explicit host/path fields)',
-      },
-      scheme: {
-        type: 'string',
-        enum: ['ws', 'wss'],
-        default: 'ws',
-        description: 'WebSocket transport scheme when url is not provided',
-      },
-      host: {
-        type: 'string',
-        description: 'Target host name or IP address when url is not provided',
-      },
-      port: {
-        type: 'number',
-        description: 'Target port (defaults to 80 for ws, 443 for wss)',
-      },
-      path: {
-        type: 'string',
-        default: '/',
-        description: 'Request path including optional query string when url is not provided',
-      },
-      subprotocols: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'Optional Sec-WebSocket-Protocol values to offer',
-      },
-      timeoutMs: {
-        type: 'number',
-        default: 5000,
-        description: 'Handshake timeout in milliseconds',
-      },
-      servername: {
-        type: 'string',
-        description: 'Optional SNI and hostname validation override for wss sessions',
-      },
-      alpnProtocols: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'Optional ALPN protocols to offer for wss sessions',
-      },
-      minVersion: {
-        type: 'string',
-        enum: [...TLS_VERSION_VALUES],
-        description: 'Optional minimum TLS version for wss sessions',
-      },
-      maxVersion: {
-        type: 'string',
-        enum: [...TLS_VERSION_VALUES],
-        description: 'Optional maximum TLS version for wss sessions',
-      },
-      caPem: {
-        type: 'string',
-        description: 'Optional PEM-encoded CA bundle for wss trust evaluation',
-      },
-      caPath: {
-        type: 'string',
-        description: 'Optional path to a PEM-encoded CA bundle for wss trust evaluation',
-      },
-      allowInvalidCertificates: {
-        type: 'boolean',
-        default: false,
-        description: 'Allow untrusted certificate chains for wss while still reporting the failure',
-      },
-      skipHostnameCheck: {
-        type: 'boolean',
-        default: false,
-        description:
-          'Skip hostname verification for wss while still reporting the requested target',
-      },
+  objectTool('websocket_open', 'Open a WebSocket session.', {
+    url: {
+      type: 'string',
+      description: 'WebSocket URL',
     },
-  ),
+    scheme: {
+      type: 'string',
+      enum: ['ws', 'wss'],
+      default: 'ws',
+      description: 'WebSocket transport scheme',
+    },
+    host: {
+      type: 'string',
+      description: 'Target host name or IP address',
+    },
+    port: {
+      type: 'number',
+      description: 'Target port',
+    },
+    path: {
+      type: 'string',
+      default: '/',
+      description: 'Request path',
+    },
+    subprotocols: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Optional subprotocols to offer',
+    },
+    timeoutMs: {
+      type: 'number',
+      default: 5000,
+      description: 'Handshake timeout in milliseconds',
+    },
+    servername: {
+      type: 'string',
+      description: 'Optional SNI and hostname validation override',
+    },
+    alpnProtocols: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Optional ALPN protocols to offer',
+    },
+    minVersion: {
+      type: 'string',
+      enum: [...TLS_VERSION_VALUES],
+      description: 'Optional minimum TLS version',
+    },
+    maxVersion: {
+      type: 'string',
+      enum: [...TLS_VERSION_VALUES],
+      description: 'Optional maximum TLS version',
+    },
+    caPem: {
+      type: 'string',
+      description: 'Optional PEM-encoded CA bundle',
+    },
+    caPath: {
+      type: 'string',
+      description: 'Optional path to a PEM-encoded CA bundle',
+    },
+    allowInvalidCertificates: {
+      type: 'boolean',
+      default: false,
+      description: 'Allow untrusted certificate chains',
+    },
+    skipHostnameCheck: {
+      type: 'boolean',
+      default: false,
+      description: 'Skip hostname verification',
+    },
+  }),
   objectTool(
     'websocket_send_frame',
-    'Send a single WebSocket frame on an open session using a minimal opcode set (text, binary, ping, pong, close).',
+    'Send a WebSocket frame.',
     {
       sessionId: {
         type: 'string',
-        description: 'Session id returned by websocket_open',
+        description: 'WebSocket session ID',
       },
       frameType: {
         type: 'string',
@@ -102,11 +97,11 @@ export const websocketTools: Tool[] = [
       },
       closeCode: {
         type: 'number',
-        description: 'Optional close status code when frameType is close',
+        description: 'Optional close status code',
       },
       closeReason: {
         type: 'string',
-        description: 'Optional UTF-8 close reason when frameType is close',
+        description: 'Optional close reason',
       },
       timeoutMs: {
         type: 'number',
@@ -122,7 +117,7 @@ export const websocketTools: Tool[] = [
     {
       sessionId: {
         type: 'string',
-        description: 'Session id returned by websocket_open',
+        description: 'WebSocket session ID',
       },
       timeoutMs: {
         type: 'number',
@@ -134,11 +129,11 @@ export const websocketTools: Tool[] = [
   ),
   objectTool(
     'websocket_close',
-    'Close an open WebSocket session and release its queued frame state.',
+    'Close an open WebSocket session.',
     {
       sessionId: {
         type: 'string',
-        description: 'Session id returned by websocket_open',
+        description: 'WebSocket session ID',
       },
       force: {
         type: 'boolean',
@@ -148,11 +143,11 @@ export const websocketTools: Tool[] = [
       },
       closeCode: {
         type: 'number',
-        description: 'Optional close status code when force is false',
+        description: 'Optional close status code',
       },
       closeReason: {
         type: 'string',
-        description: 'Optional UTF-8 close reason when force is false',
+        description: 'Optional close reason',
       },
       timeoutMs: {
         type: 'number',

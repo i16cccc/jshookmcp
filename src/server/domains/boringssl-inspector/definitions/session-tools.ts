@@ -4,7 +4,7 @@ import { objectTool, TLS_VERSION_VALUES } from './support';
 export const sessionTools: Tool[] = [
   objectTool(
     'tcp_open',
-    'Open a stateful TCP session and return a sessionId for follow-up read/write calls.',
+    'Open a TCP session.',
     {
       host: {
         type: 'string',
@@ -13,7 +13,7 @@ export const sessionTools: Tool[] = [
       },
       port: {
         type: 'number',
-        description: 'Target TCP port (1-65535)',
+        description: 'Target TCP port',
       },
       timeoutMs: {
         type: 'number',
@@ -30,11 +30,11 @@ export const sessionTools: Tool[] = [
   ),
   objectTool(
     'tcp_write',
-    'Write raw bytes to an open TCP session; accepts hex or UTF-8 text input.',
+    'Write data to an open TCP session.',
     {
       sessionId: {
         type: 'string',
-        description: 'Session id returned by tcp_open',
+        description: 'TCP session ID',
       },
       dataHex: {
         type: 'string',
@@ -42,7 +42,7 @@ export const sessionTools: Tool[] = [
       },
       dataText: {
         type: 'string',
-        description: 'UTF-8 text payload to write (alternative to dataHex)',
+        description: 'UTF-8 text payload to write',
       },
       timeoutMs: {
         type: 'number',
@@ -54,11 +54,11 @@ export const sessionTools: Tool[] = [
   ),
   objectTool(
     'tcp_read_until',
-    'Read from an open TCP session until a delimiter is observed or a byte limit is reached.',
+    'Read from an open TCP session until a delimiter or byte limit is reached.',
     {
       sessionId: {
         type: 'string',
-        description: 'Session id returned by tcp_open',
+        description: 'TCP session ID',
       },
       delimiterHex: {
         type: 'string',
@@ -66,7 +66,7 @@ export const sessionTools: Tool[] = [
       },
       delimiterText: {
         type: 'string',
-        description: 'UTF-8 delimiter to stop at (alternative to delimiterHex)',
+        description: 'UTF-8 delimiter to stop at',
       },
       includeDelimiter: {
         type: 'boolean',
@@ -87,11 +87,11 @@ export const sessionTools: Tool[] = [
   ),
   objectTool(
     'tcp_close',
-    'Close an open TCP session and release its buffered state.',
+    'Close an open TCP session.',
     {
       sessionId: {
         type: 'string',
-        description: 'Session id returned by tcp_open',
+        description: 'TCP session ID',
       },
       force: {
         type: 'boolean',
@@ -108,7 +108,7 @@ export const sessionTools: Tool[] = [
   ),
   objectTool(
     'tls_open',
-    'Open a stateful TLS session with explicit trust and hostname policy controls, then return a sessionId.',
+    'Open a TLS session.',
     {
       host: {
         type: 'string',
@@ -117,7 +117,7 @@ export const sessionTools: Tool[] = [
       port: {
         type: 'number',
         default: 443,
-        description: 'Target TLS port (default: 443)',
+        description: 'Target TLS port',
       },
       servername: {
         type: 'string',
@@ -126,7 +126,7 @@ export const sessionTools: Tool[] = [
       alpnProtocols: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Optional ALPN protocols to offer, in preference order',
+        description: 'Optional ALPN protocols to offer',
       },
       timeoutMs: {
         type: 'number',
@@ -145,11 +145,11 @@ export const sessionTools: Tool[] = [
       },
       caPem: {
         type: 'string',
-        description: 'Optional PEM-encoded CA bundle used for trust evaluation',
+        description: 'Optional PEM-encoded CA bundle',
       },
       caPath: {
         type: 'string',
-        description: 'Optional path to a PEM-encoded CA bundle used for trust evaluation',
+        description: 'Optional path to a PEM-encoded CA bundle',
       },
       allowInvalidCertificates: {
         type: 'boolean',
@@ -166,11 +166,11 @@ export const sessionTools: Tool[] = [
   ),
   objectTool(
     'tls_write',
-    'Write raw bytes to an open TLS session; accepts hex or UTF-8 text input.',
+    'Write data to an open TLS session.',
     {
       sessionId: {
         type: 'string',
-        description: 'Session id returned by tls_open',
+        description: 'TLS session ID',
       },
       dataHex: {
         type: 'string',
@@ -178,7 +178,7 @@ export const sessionTools: Tool[] = [
       },
       dataText: {
         type: 'string',
-        description: 'UTF-8 text payload to write (alternative to dataHex)',
+        description: 'UTF-8 text payload to write',
       },
       timeoutMs: {
         type: 'number',
@@ -190,11 +190,11 @@ export const sessionTools: Tool[] = [
   ),
   objectTool(
     'tls_read_until',
-    'Read from an open TLS session until a delimiter is observed or a byte limit is reached.',
+    'Read from an open TLS session until a delimiter or byte limit is reached.',
     {
       sessionId: {
         type: 'string',
-        description: 'Session id returned by tls_open',
+        description: 'TLS session ID',
       },
       delimiterHex: {
         type: 'string',
@@ -202,7 +202,7 @@ export const sessionTools: Tool[] = [
       },
       delimiterText: {
         type: 'string',
-        description: 'UTF-8 delimiter to stop at (alternative to delimiterHex)',
+        description: 'UTF-8 delimiter to stop at',
       },
       includeDelimiter: {
         type: 'boolean',
@@ -223,11 +223,11 @@ export const sessionTools: Tool[] = [
   ),
   objectTool(
     'tls_close',
-    'Close an open TLS session and release its buffered state.',
+    'Close an open TLS session.',
     {
       sessionId: {
         type: 'string',
-        description: 'Session id returned by tls_open',
+        description: 'TLS session ID',
       },
       force: {
         type: 'boolean',

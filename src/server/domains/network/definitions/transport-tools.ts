@@ -5,10 +5,8 @@ import { tool } from '@server/registry/tool-builder';
 export const transportTools: Tool[] = [
   tool('http_request_build', (t) =>
     t
-      .desc(
-        'Build a raw HTTP/1.x request payload with CRLF line endings. Useful for preparing deterministic request text for http_plain_request or other raw socket tools.',
-      )
-      .string('method', 'HTTP method token, e.g. GET, POST, HEAD')
+      .desc('Build a raw HTTP/1.x request payload.')
+      .string('method', 'HTTP method token')
       .string('target', 'Request target, such as /path, *, or an absolute-form URL')
       .string('host', 'Optional Host header value to inject when addHostHeader is enabled')
       .object(
@@ -17,7 +15,7 @@ export const transportTools: Tool[] = [
         'Optional HTTP headers to include in the request',
       )
       .string('body', 'Optional UTF-8 request body')
-      .enum('httpVersion', ['1.0', '1.1'], 'HTTP protocol version to emit. Default: 1.1', {
+      .enum('httpVersion', ['1.0', '1.1'], 'HTTP protocol version to emit', {
         default: '1.1',
       })
       .boolean('addHostHeader', 'Auto-add the Host header when host is provided', {
@@ -35,9 +33,7 @@ export const transportTools: Tool[] = [
   ),
   tool('http_plain_request', (t) =>
     t
-      .desc(
-        'Send a raw HTTP request over plain TCP using deterministic server-side logic with DNS pinning, response parsing, and bounded capture. Non-loopback HTTP targets require explicit request-scoped authorization.',
-      )
+      .desc('Send a raw HTTP request over plain TCP.')
       .string('host', 'Target hostname or IP literal')
       .number('port', 'TCP port to connect to. Default: 80', {
         default: 80,
@@ -64,9 +60,7 @@ export const transportTools: Tool[] = [
   ),
   tool('http2_probe', (t) =>
     t
-      .desc(
-        'Probe an HTTP/2 endpoint using Node http2 with deterministic DNS pinning and bounded response capture. Reports the negotiated protocol, ALPN result, response headers, status, and a response body snippet. Non-loopback plaintext h2c targets require explicit request-scoped authorization.',
-      )
+      .desc('Probe an HTTP/2 endpoint.')
       .string('url', 'Absolute http:// or https:// URL to probe')
       .string('method', 'HTTP method token to send. Default: GET')
       .object(
@@ -75,11 +69,7 @@ export const transportTools: Tool[] = [
         'Optional request headers to include. Header names are normalized to lowercase for HTTP/2.',
       )
       .string('body', 'Optional UTF-8 request body to send with the probe')
-      .array(
-        'alpnProtocols',
-        { type: 'string' },
-        'Optional ALPN preference list for TLS probes. Default: ["h2", "http/1.1"].',
-      )
+      .array('alpnProtocols', { type: 'string' }, 'ALPN protocols to offer')
       .object(
         'authorization',
         networkAuthorizationSchema,
@@ -99,9 +89,7 @@ export const transportTools: Tool[] = [
   ),
   tool('http2_frame_build', (t) =>
     t
-      .desc(
-        'Build a raw HTTP/2 binary frame of any supported type (DATA, SETTINGS, PING, WINDOW_UPDATE, RST_STREAM, GOAWAY, or RAW). Returns the 9-byte frame header and full frame as hex strings, ready to send over a tcp_write or tls_write channel for protocol-level fuzzing and injection.',
-      )
+      .desc('Build a raw HTTP/2 frame.')
       .string(
         'frameType',
         'HTTP/2 frame type: DATA, SETTINGS, PING, WINDOW_UPDATE, RST_STREAM, GOAWAY, or RAW',
@@ -143,9 +131,7 @@ export const transportTools: Tool[] = [
   ),
   tool('network_rtt_measure', (t) =>
     t
-      .desc(
-        'Measure round-trip time (RTT) to a target URL using TCP, TLS, or HTTP probes. Returns per-sample latencies and aggregate statistics (min/max/mean/median/p95).',
-      )
+      .desc('Measure round-trip time to a target URL.')
       .string('url', 'Target URL to measure RTT to')
       .string('probeType', 'Probe type: tcp, tls, or http. Default: tcp', { default: 'tcp' })
       .number('iterations', 'Number of probe iterations (1-50). Default: 5', {

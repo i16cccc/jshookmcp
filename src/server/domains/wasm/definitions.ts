@@ -2,7 +2,7 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { tool } from '@server/registry/tool-builder';
 
 export const wasmTools: Tool[] = [
-  tool('wasm_capabilities', (t) => t.desc('Report WASM capture and tool availability.').query()),
+  tool('wasm_capabilities', (t) => t.desc('Report WASM tool availability.').query()),
   tool('wasm_dump', (t) =>
     t
       .desc('Dump a captured WebAssembly module from the current page.')
@@ -16,7 +16,7 @@ export const wasmTools: Tool[] = [
   ),
   tool('wasm_disassemble', (t) =>
     t
-      .desc('Disassemble a .wasm file to WAT with wasm2wat.')
+      .desc('Disassemble a .wasm file to WAT.')
       .string('inputPath', 'Path to the .wasm file to disassemble')
       .string('outputPath', 'Output .wat file path. If omitted, auto-generates in artifacts/wasm/')
       .boolean('foldExprs', 'Fold expressions for more compact output', { default: true })
@@ -24,14 +24,14 @@ export const wasmTools: Tool[] = [
   ),
   tool('wasm_decompile', (t) =>
     t
-      .desc('Decompile a .wasm file to C-like pseudo-code with wasm-decompile.')
+      .desc('Decompile a .wasm file to pseudo-code.')
       .string('inputPath', 'Path to the .wasm file to decompile')
       .string('outputPath', 'Output file path. If omitted, auto-generates in artifacts/wasm/')
       .required('inputPath'),
   ),
   tool('wasm_inspect_sections', (t) =>
     t
-      .desc('Inspect sections and metadata of a .wasm file with wasm-objdump.')
+      .desc('Inspect sections and metadata of a .wasm file.')
       .string('inputPath', 'Path to the .wasm file to inspect')
       .enum(
         'sections',
@@ -43,9 +43,9 @@ export const wasmTools: Tool[] = [
   ),
   tool('wasm_offline_run', (t) =>
     t
-      .desc('Run an exported .wasm function with wasmtime or wasmer.')
+      .desc('Run an exported .wasm function.')
       .string('inputPath', 'Path to the .wasm file')
-      .string('functionName', 'Name of the exported function to invoke (e.g., "_sign", "encrypt")')
+      .string('functionName', 'Name of the exported function to invoke')
       .array(
         'args',
         { type: 'string' },
@@ -62,7 +62,7 @@ export const wasmTools: Tool[] = [
   ),
   tool('wasm_optimize', (t) =>
     t
-      .desc('Optimize a .wasm file with wasm-opt.')
+      .desc('Optimize a .wasm file.')
       .string('inputPath', 'Path to the .wasm file to optimize')
       .string(
         'outputPath',
@@ -75,10 +75,7 @@ export const wasmTools: Tool[] = [
     t
       .desc('Read captured WASM VMP import-call traces from the current page.')
       .number('maxEvents', 'Maximum import call events to capture', { default: 5000 })
-      .string(
-        'filterModule',
-        'Only trace calls to this import module name (e.g., "env", "wasi_snapshot_preview1")',
-      ),
+      .string('filterModule', 'Filter by import module name'),
   ),
   tool('wasm_memory_inspect', (t) =>
     t
@@ -90,7 +87,7 @@ export const wasmTools: Tool[] = [
   ),
   tool('wasm_to_c', (t) =>
     t
-      .desc('Convert a .wasm file to C source and header with wasm2c (WABT).')
+      .desc('Convert a .wasm file to C source and header.')
       .string('inputPath', 'Path to the .wasm file to convert')
       .string(
         'outputDir',
@@ -100,23 +97,19 @@ export const wasmTools: Tool[] = [
   ),
   tool('wasm_detect_obfuscation', (t) =>
     t
-      .desc(
-        'Detect obfuscation patterns in a .wasm file (CFG flattening, dead code, opaque predicates, constant encoding).',
-      )
+      .desc('Detect obfuscation patterns in a .wasm file.')
       .string('inputPath', 'Path to the .wasm file to analyze')
       .boolean('verbose', 'Include detailed pattern evidence in output', { default: false })
       .required('inputPath'),
   ),
   tool('wasm_instrument_trace', (t) =>
     t
-      .desc(
-        'Generate JS instrumentation wrapper for a .wasm module to trace calls, memory, and control flow.',
-      )
+      .desc('Generate a JS instrumentation wrapper for a .wasm module.')
       .string('inputPath', 'Path to the .wasm file to instrument')
       .array(
         'hooks',
         { type: 'string', enum: ['call', 'memory', 'branch', 'loop', 'local'] },
-        'Hook types to inject (empty = all)',
+        'Hook types to inject',
       )
       .boolean('allHooks', 'Inject all available hook types', { default: true })
       .string('outputPath', 'Output JS file path. If omitted, auto-generates in artifacts/wasm/')
