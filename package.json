@@ -170,8 +170,7 @@
       "path-to-regexp": "8.4.0",
       "protobufjs": ">=7.5.5",
       "picomatch@^2.0.0": "2.3.2",
-      "picomatch@^4.0.0": "4.0.4",
-      "vitepress>vite": "$vite"
+      "picomatch@^4.0.0": "4.0.4"
     },
     "onlyBuiltDependencies": [
       "better-sqlite3",
