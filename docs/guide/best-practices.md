@@ -2,22 +2,50 @@
 
 面向初次配置 jshookmcp 的用户，帮你快速上手并避免常见坑。
 
-## 推荐 `.env` 配置
+## 配置方式
 
-### 最小可用配置
+jshookmcp 的所有参数都有内建默认值，**大多数用户无需任何配置即可直接使用**。如需覆盖默认值，根据安装方式选择对应配置方式：
+
+### npx / MCP 用户（推荐）
+
+通过 `npx` 或 MCP 客户端安装的用户，在 MCP 配置的 `env` 字段中传入环境变量即可，**不需要创建 `.env` 文件**：
+
+```json
+{
+  "mcpServers": {
+    "jshook": {
+      "command": "npx",
+      "args": ["-y", "@jshookmcp/jshook@latest"],
+      "env": {
+        "MCP_TOOL_PROFILE": "workflow"
+      }
+    }
+  }
+}
+```
+
+需要更多参数时，直接在 `env` 对象里添加键值对：
+
+```json
+"env": {
+  "MCP_TOOL_PROFILE": "workflow",
+  "PUPPETEER_HEADLESS": "true",
+  "ENABLE_CACHE": "true",
+  "EXTENSION_REGISTRY_BASE_URL": "https://raw.githubusercontent.com/vmoranv/jshookmcpextension/master/registry"
+}
+```
+
+### 源码开发者
+
+Clone 仓库进行开发的用户，在项目根目录创建 `.env` 文件（参考 `.env.example` 模板）。运行时自动从 `src/utils/config.ts` 读取，未设置的变量回退到代码默认值。
 
 ```bash
-# .env — 最小启动配置
+# .env — 项目根目录
 PUPPETEER_HEADLESS=true
-MCP_TOOL_PROFILE=workflow        # 推荐默认档位，覆盖 90% 逆向场景
+MCP_TOOL_PROFILE=workflow
 ```
 
-### 需要扩展生态时
-
-```bash
-# 扩展 registry（安装官方 workflow/plugin 需要）
-EXTENSION_REGISTRY_BASE_URL=https://raw.githubusercontent.com/vmoranv/jshookmcpextension/master/registry
-```
+> **注意**：两种方式传入的变量名和效果完全相同，只是传入途径不同。所有可用变量见 [配置项参考](/guide/configuration)。
 
 ---
 
@@ -29,9 +57,14 @@ EXTENSION_REGISTRY_BASE_URL=https://raw.githubusercontent.com/vmoranv/jshookmcpe
 | 只做搜索/探索 | `search` | 极简模式，仅暴露元工具，token 最省 |
 | 深度分析（WASM/进程/内存） | `full` | 全域预载，适合重型任务 |
 
+切换方式（任选一种）：
+
 ```bash
-# 切换方式
-MCP_TOOL_PROFILE=workflow   # 在 .env 中设置
+# 方式一：MCP 配置 env 字段
+"MCP_TOOL_PROFILE": "workflow"
+
+# 方式二：.env 文件（仅源码开发者）
+MCP_TOOL_PROFILE=workflow
 ```
 
 ---
@@ -63,6 +96,8 @@ MCP_TOOL_PROFILE=workflow   # 在 .env 中设置
 ---
 
 ## 环境调优
+
+> 以下示例以 `.env` 语法展示。npx 用户请将等号改为 JSON 键值对放入 MCP 配置的 `env` 字段。
 
 ### 浏览器配置
 
@@ -146,7 +181,7 @@ WORKFLOW_BATCH_MAX_TIMEOUT_MS=300000
 
 ## 下一步
 
-- [.env 与配置](/guide/configuration) — 完整配置项参考
+- [配置项参考](/guide/configuration) — 完整配置项参考
 - [工具路由](/guide/tool-selection) — Profile 与路由机制详解
 - [域矩阵](/reference/) — 所有域的完整工具清单
 - [Workflow 开发](/extensions/workflow-development) — 编写自己的 workflow

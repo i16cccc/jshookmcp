@@ -2,22 +2,50 @@
 
 A hands-on guide for first-time jshookmcp users — get running quickly and avoid common pitfalls.
 
-## Recommended `.env` Configuration
+## Configuration
 
-### Minimal Startup
+All jshookmcp parameters have built-in defaults — **most users can start without any configuration**. To override defaults, choose the method that matches your installation:
+
+### npx / MCP Users (Recommended)
+
+Users installing via `npx` or an MCP client pass environment variables in the MCP config's `env` field — **no `.env` file needed**:
+
+```json
+{
+  "mcpServers": {
+    "jshook": {
+      "command": "npx",
+      "args": ["-y", "@jshookmcp/jshook@latest"],
+      "env": {
+        "MCP_TOOL_PROFILE": "workflow"
+      }
+    }
+  }
+}
+```
+
+Add more parameters as needed in the `env` object:
+
+```json
+"env": {
+  "MCP_TOOL_PROFILE": "workflow",
+  "PUPPETEER_HEADLESS": "true",
+  "ENABLE_CACHE": "true",
+  "EXTENSION_REGISTRY_BASE_URL": "https://raw.githubusercontent.com/vmoranv/jshookmcpextension/master/registry"
+}
+```
+
+### Source Developers
+
+Users who clone the repo for development can create a `.env` file in the project root (see `.env.example` for a template). Runtime reads from `src/utils/config.ts`; unset variables fall back to code defaults.
 
 ```bash
-# .env — minimal working config
+# .env — project root
 PUPPETEER_HEADLESS=true
-MCP_TOOL_PROFILE=workflow        # recommended default, covers 90% of RE tasks
+MCP_TOOL_PROFILE=workflow
 ```
 
-### When You Need the Extension Ecosystem
-
-```bash
-# Extension registry (required to install official workflows/plugins)
-EXTENSION_REGISTRY_BASE_URL=https://raw.githubusercontent.com/vmoranv/jshookmcpextension/master/registry
-```
+> **Note**: Variable names and effects are identical regardless of method — only the delivery channel differs. See the [Configuration Reference](/en/guide/configuration) for all available variables.
 
 ---
 
@@ -29,8 +57,13 @@ EXTENSION_REGISTRY_BASE_URL=https://raw.githubusercontent.com/vmoranv/jshookmcpe
 | Search/exploration only | `search` | Minimal mode, only meta-tools exposed, lowest token cost |
 | Deep analysis (WASM/process/memory) | `full` | All domains pre-loaded, designed for heavy tasks |
 
+Switch profile (choose one):
+
 ```bash
-# Set in .env
+# Option 1: MCP config env field
+"MCP_TOOL_PROFILE": "workflow"
+
+# Option 2: .env file (source developers only)
 MCP_TOOL_PROFILE=workflow
 ```
 
@@ -63,6 +96,8 @@ After installing, use `list_extension_workflows()` / `run_extension_workflow()` 
 ---
 
 ## Environment Tuning
+
+> Examples below use `.env` syntax. npx users should convert to JSON key-value pairs in the MCP config `env` field.
 
 ### Browser Configuration
 
@@ -146,7 +181,7 @@ WORKFLOW_BATCH_MAX_TIMEOUT_MS=300000
 
 ## Next Steps
 
-- [.env and Configuration](/en/guide/configuration) — Full configuration reference
+- [Configuration Reference](/en/guide/configuration) — Full configuration reference
 - [Tool Routing](/en/guide/tool-selection) — Profile and routing mechanism details
 - [Domain Matrix](/en/reference/) — Full tool inventory across all domains
 - [Workflow Development](/en/extensions/workflow-development) — Build your own workflows

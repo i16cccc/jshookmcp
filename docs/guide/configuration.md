@@ -1,8 +1,33 @@
-# `.env` 与配置
+# 配置参考
 
-`.env.example` 只是模板，不会被运行时自动加载。实际读取的是仓库根目录下的 `.env`。
+jshookmcp 的所有参数都有内建默认值，大多数用户无需额外配置。如需覆盖，根据安装方式选择：
 
-`.env.example` 现在只保留常见覆盖项，不再把“代码里已经有默认值”的变量全量重复展开。未写入 `.env` 的配置项会直接回退到 `src/utils/config.ts` 中的内建默认值。
+## 配置传入方式
+
+### npx / MCP 用户（无需 `.env` 文件）
+
+在 MCP 客户端配置的 `env` 字段中传入环境变量：
+
+```json
+{
+  “mcpServers”: {
+    “jshook”: {
+      “command”: “npx”,
+      “args”: [“-y”, “@jshookmcp/jshook@latest”],
+      “env”: {
+        “MCP_TOOL_PROFILE”: “workflow”,
+        “PUPPETEER_HEADLESS”: “true”
+      }
+    }
+  }
+}
+```
+
+### 源码开发者
+
+Clone 仓库后，在项目根目录创建 `.env` 文件（参考 `.env.example`）。运行时自动加载，未设置的变量回退到 `src/utils/config.ts` 中的内建默认值。
+
+> `.env.example` 只是模板，不会被运行时加载。实际读取的是仓库根目录的 `.env`。
 
 ## 配置项总表
 

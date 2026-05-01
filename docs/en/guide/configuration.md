@@ -1,8 +1,33 @@
-# `.env` and Configuration
+# Configuration Reference
 
-`.env.example` is only a template and is not auto-loaded at runtime. The process reads the repository-root `.env` file.
+All jshookmcp parameters have built-in defaults — most users need no extra configuration. To override, choose the method that matches your installation:
 
-`.env.example` is intentionally sparse now: it only keeps common overrides instead of repeating every variable that already has a built-in default. Any key omitted from `.env` falls back to the defaults in `src/utils/config.ts`.
+## Configuration Methods
+
+### npx / MCP Users (No `.env` file needed)
+
+Pass environment variables in your MCP client config's `env` field:
+
+```json
+{
+  "mcpServers": {
+    "jshook": {
+      "command": "npx",
+      "args": ["-y", "@jshookmcp/jshook@latest"],
+      "env": {
+        "MCP_TOOL_PROFILE": "workflow",
+        "PUPPETEER_HEADLESS": "true"
+      }
+    }
+  }
+}
+```
+
+### Source Developers
+
+After cloning the repo, create a `.env` file in the project root (see `.env.example`). Runtime auto-loads it; unset variables fall back to built-in defaults in `src/utils/config.ts`.
+
+> `.env.example` is only a template — it is not auto-loaded at runtime. The process reads the repository-root `.env` file.
 
 ## Full configuration reference
 
