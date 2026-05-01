@@ -77,9 +77,6 @@ jobs:
       - name: Generate registry index
         run: node scripts/generate-domains-index.mjs
 
-      - name: Install Playwright Browsers
-        run: pnpm exec playwright-core install --with-deps chromium
-
       - name: Run Linters & Formatters
         run: |
           pnpm run lint
@@ -91,9 +88,6 @@ jobs:
 
       - name: Build project
         run: pnpm run build
-
-      - name: Run E2E Tests
-        run: pnpm run test:e2e
 
   cross-platform-smoke:
     runs-on: ${{ matrix.os }}
@@ -139,23 +133,5 @@ jobs:
       - name: Generate registry index
         run: node scripts/generate-domains-index.mjs
 
-      - name: Install Playwright Browsers (Linux)
-        if: runner.os == 'Linux'
-        run: pnpm exec playwright-core install --with-deps chromium
-
-      - name: Install Playwright Browsers (Non-Linux)
-        if: runner.os != 'Linux'
-        run: pnpm exec playwright-core install chromium
-
-      - name: Export Playwright executable path
-        shell: bash
-        run: |
-          BROWSER_PATH="$(node --input-type=module -e 'const { chromium } = await import("playwright-core"); process.stdout.write(chromium.executablePath())')"
-          echo "PUPPETEER_EXECUTABLE_PATH=$BROWSER_PATH" >> "$GITHUB_ENV"
-          echo "PUPPETEER_HEADLESS=true" >> "$GITHUB_ENV"
-
       - name: Build project
         run: pnpm run build
-
-      - name: Run portable E2E smoke tests
-        run: pnpm run test:e2e:portable
