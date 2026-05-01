@@ -155,10 +155,8 @@ describe('wasm/definitions', () => {
       expect(props.outputPath).toBeDefined();
     });
 
-    it('description mentions C-like or wasm-decompile', async () => {
-      expect(
-        getDescription(tool).includes('C-like') || getDescription(tool).includes('wasm-decompile'),
-      ).toBe(true);
+    it('description focuses on pseudo-code output', async () => {
+      expect(getDescription(tool)).toContain('pseudo-code');
     });
   });
 
@@ -206,9 +204,8 @@ describe('wasm/definitions', () => {
       expect(timeoutMs.default).toBe(10000);
     });
 
-    it('description mentions the runtime backend', async () => {
-      const desc = getDescription(tool).toLowerCase();
-      expect(desc.includes('wasmtime') || desc.includes('wasmer')).toBe(true);
+    it('description focuses on running an exported function', async () => {
+      expect(getDescription(tool)).toContain('Run an exported .wasm function');
     });
   });
 
@@ -227,10 +224,8 @@ describe('wasm/definitions', () => {
       expect(level.default).toBe('O2');
     });
 
-    it('description mentions binaryen or wasm-opt', async () => {
-      expect(
-        getDescription(tool).includes('binaryen') || getDescription(tool).includes('wasm-opt'),
-      ).toBe(true);
+    it('description focuses on optimization behavior', async () => {
+      expect(getDescription(tool)).toContain('Optimize a .wasm file');
     });
   });
 
