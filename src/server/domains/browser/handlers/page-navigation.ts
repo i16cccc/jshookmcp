@@ -37,12 +37,14 @@ export class PageNavigationHandlers {
       return;
     }
 
-    const pageId = registry.upsertPage(page, meta);
+    const url = meta.url;
+    const title = meta.title;
+    const pageId = registry.upsertPage(page, { url, title });
     registry.setCurrentPageId(pageId);
   }
 
   private async getChromePageIfAvailable(): Promise<unknown | null> {
-    const pageControllerRecord = this.deps.pageController as Record<string, unknown>;
+    const pageControllerRecord = this.deps.pageController as unknown as Record<string, unknown>;
     const getPage = pageControllerRecord['getPage'];
     if (typeof getPage !== 'function') {
       return null;

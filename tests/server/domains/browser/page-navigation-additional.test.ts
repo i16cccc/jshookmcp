@@ -15,7 +15,9 @@ type PageNavigationDeps = ConstructorParameters<typeof PageNavigationHandlers>[0
 type PageControllerStub = Pick<
   PageNavigationDeps['pageController'],
   'navigate' | 'reload' | 'goBack' | 'goForward' | 'getURL' | 'getTitle'
->;
+> & {
+  getPage: () => Promise<unknown>;
+};
 type ConsoleMonitorStub = Pick<
   PageNavigationDeps['consoleMonitor'],
   'setPlaywrightPage' | 'enable' | 'isNetworkEnabled'
