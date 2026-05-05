@@ -202,4 +202,91 @@ describe('MCPServer.search.handlers.route', () => {
       },
     });
   });
+
+  describe('context defensive parsing', () => {
+    it('accepts context as a JSON stringified object and passes parsed value to routeToolRequest', async () => {
+      const ctx = createCtx();
+      state.routeToolRequest.mockResolvedValueOnce({
+        recommendations: [],
+        nextActions: [],
+      });
+
+      await handleRouteTool(ctx, {
+        task: 'navigate to a page',
+        context: '{"preferredDomain":"network","autoActivate":true,"maxRecommendations":5}',
+      });
+
+      // Verify the stringified context was parsed and passed correctly
+      expect(state.routeToolRequest).toHaveBeenCalledWith(
+        {
+          task: 'navigate to a page',
+          context: { preferredDomain: 'network', autoActivate: true, maxRecommendations: 5 },
+        },
+        ctx,
+        expect.any(Object),
+      );
+    });
+
+    it('still accepts context as a plain object', async () => {
+      const ctx = createCtx();
+      state.routeToolRequest.mockResolvedValueOnce({
+        recommendations: [],
+        nextActions: [],
+      });
+
+      await handleRouteTool(ctx, {
+        task: 'navigate to a page',
+        context: { preferredDomain: 'browser', autoActivate: true },
+      });
+
+      expect(state.routeToolRequest).toHaveBeenCalledWith(
+        {
+          task: 'navigate to a page',
+          context: { preferredDomain: 'browser', autoActivate: true },
+        },
+        ctx,
+        expect.any(Object),
+      );
+    });
+
+    it('ignores malformed JSON in context string', async () => {
+      const ctx = createCtx();
+      state.routeToolRequest.mockResolvedValueOnce({
+        recommendations: [],
+        nextActions: [],
+      });
+
+      await handleRouteTool(ctx, {
+        task: 'navigate to a page',
+        context: 'not-json-at-all',
+      });
+
+      // String stays as-is (not a valid JSON object)
+      expect(state.routeToolRequest).toHaveBeenCalledWith(
+        { task: 'navigate to a page', context: 'not-json-at-all' },
+        ctx,
+        expect.any(Object),
+      );
+    });
+
+    it('ignores JSON array in context string', async () => {
+      const ctx = createCtx();
+      state.routeToolRequest.mockResolvedValueOnce({
+        recommendations: [],
+        nextActions: [],
+      });
+
+      await handleRouteTool(ctx, {
+        task: 'navigate to a page',
+        context: '[1, 2, 3]',
+      });
+
+      // JSON array is not a plain object — stays as-is
+      expect(state.routeToolRequest).toHaveBeenCalledWith(
+        { task: 'navigate to a page', context: '[1, 2, 3]' },
+        ctx,
+        expect.any(Object),
+      );
+    });
+  });
 });

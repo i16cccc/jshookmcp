@@ -30,7 +30,20 @@ export async function handleRouteTool(
   args: Record<string, unknown>,
 ): Promise<ToolResponse> {
   const task = args.task as string;
-  const context = args.context as
+  // Defensively parse context: accept stringified JSON objects from MCP clients that
+  // serialize arguments as JSON strings.
+  let rawContext = args.context;
+  if (typeof rawContext === 'string' && rawContext.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(rawContext);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        rawContext = parsed;
+      }
+    } catch {
+      /* malformed JSON — fall through with original value */
+    }
+  }
+  const context = rawContext as
     | {
         preferredDomain?: string;
         autoActivate?: boolean;
