@@ -265,4 +265,54 @@ describe('MCPServer.search.handlers.activate', () => {
     });
     expect(ctx.server.sendToolListChanged).not.toHaveBeenCalled();
   });
+
+  describe('accepts names as JSON stringified array', () => {
+    it('accepts names as a JSON stringified array', async () => {
+      const ctx = createCtx();
+
+      const result = parseResponse(await handleActivateTools(ctx, { names: '["page_navigate"]' }));
+
+      expect(result).toMatchObject({
+        success: true,
+        activated: ['page_navigate'],
+      });
+    });
+
+    it('accepts names as a JSON stringified array with multiple items', async () => {
+      const ctx = createCtx();
+
+      const result = parseResponse(
+        await handleActivateTools(ctx, { names: '["page_navigate","browser_launch"]' }),
+      );
+
+      // browser_launch is pre-selected in createCtx.selectedTools, so it shows as alreadyActive
+      expect(result).toMatchObject({
+        success: true,
+        activated: expect.arrayContaining(['page_navigate']),
+        alreadyActive: expect.arrayContaining(['browser_launch']),
+      });
+    });
+
+    it('rejects names as a non-JSON string', async () => {
+      const ctx = createCtx();
+
+      const result = parseResponse(await handleActivateTools(ctx, { names: 'not-json-at-all' }));
+
+      expect(result).toEqual({
+        success: false,
+        error: 'names must be an array',
+      });
+    });
+
+    it('still accepts native array (no regression for correct callers)', async () => {
+      const ctx = createCtx();
+
+      const result = parseResponse(await handleActivateTools(ctx, { names: ['page_navigate'] }));
+
+      expect(result).toMatchObject({
+        success: true,
+        activated: ['page_navigate'],
+      });
+    });
+  });
 });

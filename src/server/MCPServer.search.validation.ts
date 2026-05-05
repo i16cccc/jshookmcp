@@ -20,7 +20,20 @@ export function validateToolNameArray(args: Record<string, unknown>): {
   names: string[];
   error?: string;
 } {
-  const raw = args.names;
+  let raw = args.names;
+
+  // Accept stringified JSON arrays (some MCP clients serialize arrays as strings).
+  if (typeof raw === 'string' && raw.trim().startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        raw = parsed;
+      }
+    } catch {
+      /* malformed — fall through to the array check below */
+    }
+  }
+
   if (!Array.isArray(raw)) {
     return { names: [], error: 'names must be an array' };
   }

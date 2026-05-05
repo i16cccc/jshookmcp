@@ -82,10 +82,22 @@ export async function handleCallTool(
   }
 
   const name = normalizeToolName(rawName);
-  const toolArgs =
-    args.args && typeof args.args === 'object' && !Array.isArray(args.args)
-      ? (args.args as Record<string, unknown>)
-      : {};
+  // Accept both 'args' (schema-defined name) and 'parameters' (used by some MCP clients
+  // that stringify the nested JSON). String values are parsed if they contain valid JSON.
+  let toolArgs: Record<string, unknown> = {};
+  const rawArgs = args.args ?? args.parameters;
+  if (rawArgs && typeof rawArgs === 'object' && !Array.isArray(rawArgs)) {
+    toolArgs = rawArgs as Record<string, unknown>;
+  } else if (typeof rawArgs === 'string' && rawArgs.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(rawArgs);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        toolArgs = parsed as Record<string, unknown>;
+      }
+    } catch {
+      /* malformed JSON — fall through to empty object */
+    }
+  }
 
   const callMetadata = defaultMetadata;
 

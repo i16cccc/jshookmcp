@@ -232,4 +232,64 @@ describe('MCPServer.search.handlers.call — comprehensive edge cases', () => {
       expect(ctx.executeToolWithTracking).toHaveBeenCalledWith('test_tool', {});
     });
   });
+
+  describe('call_tool accepts alternative argument container names', () => {
+    it('accepts "parameters" as a plain object as the arguments container', async () => {
+      const ctx = createCtx();
+
+      await handleCallTool(ctx, {
+        name: 'test_tool',
+        parameters: { url: 'https://api.iwara.tv/search', method: 'GET' },
+      });
+
+      expect(ctx.executeToolWithTracking).toHaveBeenCalledWith('test_tool', {
+        url: 'https://api.iwara.tv/search',
+        method: 'GET',
+      });
+    });
+
+    it('accepts "parameters" as a JSON stringified object', async () => {
+      const ctx = createCtx();
+
+      await handleCallTool(ctx, {
+        name: 'test_tool',
+        parameters: '{"url": "https://api.iwara.tv/videos", "limit": 1}',
+      });
+
+      expect(ctx.executeToolWithTracking).toHaveBeenCalledWith('test_tool', {
+        url: 'https://api.iwara.tv/videos',
+        limit: 1,
+      });
+    });
+
+    it('parameters string that is not valid JSON falls back to empty object', async () => {
+      const ctx = createCtx();
+
+      await handleCallTool(ctx, { name: 'test_tool', parameters: 'not-json-at-all' });
+
+      expect(ctx.executeToolWithTracking).toHaveBeenCalledWith('test_tool', {});
+    });
+
+    it('parameters string that is a JSON array falls back to empty object', async () => {
+      const ctx = createCtx();
+
+      await handleCallTool(ctx, { name: 'test_tool', parameters: '[1, 2, 3]' });
+
+      expect(ctx.executeToolWithTracking).toHaveBeenCalledWith('test_tool', {});
+    });
+
+    it('args takes precedence over parameters when both are present', async () => {
+      const ctx = createCtx();
+
+      await handleCallTool(ctx, {
+        name: 'test_tool',
+        args: { key: 'from_args' },
+        parameters: { key: 'from_parameters' },
+      });
+
+      expect(ctx.executeToolWithTracking).toHaveBeenCalledWith('test_tool', {
+        key: 'from_args',
+      });
+    });
+  });
 });
