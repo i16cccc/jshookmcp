@@ -15,6 +15,7 @@ export type ToolDomain = string;
 export type ToolProfile = ToolProfileId;
 
 // Derived from registry — lazily built on first access (after initRegistry).
+// Cleared by ensureDomainLoaded when new domains are added.
 let toolGroups: Record<string, Tool[]> | null = null;
 let toolDomainByName: ReadonlyMap<string, string> | null = null;
 let profileDomains: Record<ToolProfile, string[]> | null = null;
@@ -23,6 +24,11 @@ let allToolsCache: Tool[] | null = null;
 function getToolGroups(): Record<string, Tool[]> {
   if (!toolGroups) toolGroups = buildToolGroups();
   return toolGroups;
+}
+
+/** Invalidate the toolGroups cache when new domains are registered at runtime. */
+export function clearToolGroupsCache(): void {
+  toolGroups = null;
 }
 
 function getToolDomainByName(): ReadonlyMap<string, string> {

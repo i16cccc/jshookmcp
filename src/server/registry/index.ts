@@ -25,6 +25,7 @@ import {
 } from '@server/registry/discovery';
 import { DOMAIN_PROFILE_MAP } from '@server/registry/generated-domains.js';
 import { logger } from '@utils/logger';
+import { clearToolGroupsCache } from '@server/ToolCatalog';
 
 // ── Lazy-init singleton ──
 
@@ -107,6 +108,10 @@ export async function ensureDomainLoaded(domainName: string): Promise<DomainMani
     }
   }
   registrationsCache = [...registrationsByName!.values()];
+
+  // Invalidate the ToolCatalog toolGroups cache so the next getToolsByDomains
+  // call picks up the newly registered tools for this domain.
+  clearToolGroupsCache();
 
   // Update tool names view
   for (const r of manifest.registrations) {
