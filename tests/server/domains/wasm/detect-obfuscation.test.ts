@@ -99,4 +99,83 @@ describe('ExternalToolHandlers — obfuscation detection', () => {
       expect.arrayContaining([expect.objectContaining({ type: 'dead-code-injection' })]),
     );
   });
+
+  it('detects indirect-call-dispatch when call_indirect ratio is high', async () => {
+    const handlers = new ExternalToolHandlers(
+      createMockState(`(module
+  (type (func))
+  (table 4 funcref)
+  (func $dispatch
+    (call_indirect (type 0) (i32.const 0))
+    (call_indirect (type 0) (i32.const 1))
+    (call_indirect (type 0) (i32.const 2))
+    (call_indirect (type 0) (i32.const 3))
+  )
+  (func $target1)
+  (func $target2)
+  (func $target3)
+  (func $target4)
+)`),
+    );
+
+    const result = parseJson<any>(
+      await handlers.handleWasmDetectObfuscation({ inputPath: 'sample.wasm' }),
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.detections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'indirect-call-dispatch',
+          description: expect.stringContaining('call_indirect'),
+        }),
+      ]),
+    );
+  });
+
+  it('detects large-import-surface for obfuscated modules', async () => {
+    const envImports = Array.from(
+      { length: 25 },
+      (_, i) => `(import "env" "func${i}" (func))`,
+    ).join('\n');
+    const handlers = new ExternalToolHandlers(
+      createMockState(`(module\n  ${envImports}\n  (func)\n)`),
+    );
+
+    const result = parseJson<any>(
+      await handlers.handleWasmDetectObfuscation({ inputPath: 'sample.wasm' }),
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.detections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'large-import-surface',
+          description: expect.stringContaining('imports'),
+        }),
+      ]),
+    );
+  });
+
+  it('does not flag low call_indirect count', async () => {
+    const handlers = new ExternalToolHandlers(
+      createMockState(`(module
+  (type (func))
+  (table 1 funcref)
+  (func (call_indirect (type 0) (i32.const 0)))
+  (func (call $other))
+  (func (call $other))
+  (func $other)
+)`),
+    );
+
+    const result = parseJson<any>(
+      await handlers.handleWasmDetectObfuscation({ inputPath: 'sample.wasm' }),
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.detections.filter((d: any) => d.type === 'indirect-call-dispatch')).toHaveLength(
+      0,
+    );
+  });
 });

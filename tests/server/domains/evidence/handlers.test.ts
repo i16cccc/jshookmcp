@@ -109,6 +109,66 @@ describe('EvidenceHandlers', () => {
       const result = handlers.handleExportMarkdown() as any;
       expect(result.content[0].text).toBe('# Graph\nData');
     });
+
+    it('should append gap detection when graph has data', async () => {
+      mockGraph.exportMarkdown.mockReturnValue('# Graph');
+      mockGraph.exportJson.mockReturnValue({
+        nodes: [
+          { id: 'n1', type: 'request', label: 'GET /api', metadata: {} },
+          { id: 'n2', type: 'script', label: 'app.js', metadata: {} },
+        ],
+        edges: [{ id: 'e1', source: 'n1', target: 'n2', type: 'loads' }],
+      });
+      const result = handlers.handleExportMarkdown() as any;
+      const text = result.content[0].text;
+      expect(text).toContain('## Evidence Gaps');
+      expect(text).toContain('Dangling nodes (no inbound edges)');
+      expect(text).toContain('Dangling nodes (no outbound edges)');
+    });
+
+    it('should report no gaps when graph is fully connected', async () => {
+      mockGraph.exportMarkdown.mockReturnValue('# Graph');
+      mockGraph.exportJson.mockReturnValue({
+        nodes: [
+          { id: 'n1', type: 'request', label: 'GET /api', metadata: {} },
+          { id: 'n2', type: 'script', label: 'app.js', metadata: {} },
+        ],
+        edges: [
+          { id: 'e1', source: 'n1', target: 'n2', type: 'loads' },
+          { id: 'e2', source: 'n2', target: 'n1', type: 'references' },
+        ],
+      });
+      const result = handlers.handleExportMarkdown() as any;
+      expect(result.content[0].text).toContain('No gaps detected');
+    });
+
+    it('should gracefully handle missing exportJson', async () => {
+      mockGraph.exportMarkdown.mockReturnValue('# Graph');
+      mockGraph.exportJson.mockReturnValue(undefined);
+      const result = handlers.handleExportMarkdown() as any;
+      expect(result.content[0].text).toBe('# Graph');
+    });
+
+    it('should report low-confidence edges', async () => {
+      mockGraph.exportMarkdown.mockReturnValue('# Graph');
+      mockGraph.exportJson.mockReturnValue({
+        nodes: [
+          { id: 'n1', type: 'request', label: 'GET /api', metadata: {} },
+          { id: 'n2', type: 'script', label: 'app.js', metadata: {} },
+        ],
+        edges: [
+          {
+            id: 'e1',
+            source: 'n1',
+            target: 'n2',
+            type: 'correlates',
+            metadata: { confidence: 0.1 },
+          },
+        ],
+      });
+      const result = handlers.handleExportMarkdown() as any;
+      expect(result.content[0].text).toMatch(/Low-confidence edges.*1/);
+    });
   });
 
   describe('handleChain', () => {

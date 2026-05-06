@@ -294,6 +294,63 @@ describe('TlsBotHandlers — TLS/HTTP fingerprint/Bot behavioral tests', () => {
       const json = parseJson<Record<string, unknown>>(res);
       expect(json.analyzed).toBe(0);
     });
+
+    it('detects UA drift for same fingerprint', async () => {
+      const requests = [
+        {
+          requestId: 'r1',
+          url: 'https://a.com/1',
+          method: 'GET',
+          headers: { 'user-agent': 'Chrome/120', accept: '*/*', 'accept-language': 'en' },
+        },
+        {
+          requestId: 'r2',
+          url: 'https://a.com/2',
+          method: 'GET',
+          headers: { 'user-agent': 'Chrome/119', accept: '*/*', 'accept-language': 'en' },
+        },
+      ];
+      const monitor = createConsoleMonitorMock({ getNetworkRequests: (() => requests) as any });
+      const h = new TlsBotHandlers({ consoleMonitor: monitor as any });
+      const res = await h.handleNetworkBotDetectAnalyze({ limit: 2 });
+      const json = parseJson<Record<string, unknown>>(res);
+      const irc = json.interRequestConsistency as Record<string, unknown>;
+      expect(irc).toBeDefined();
+      expect(irc.uaDriftCount).toBeGreaterThan(0);
+    });
+
+    it('reports perfect consistency for identical requests', async () => {
+      const ua = 'Mozilla/5.0 Chrome/120';
+      const requests = Array.from({ length: 5 }, (_, i) => ({
+        requestId: `r${i}`,
+        url: `https://a.com/${i}`,
+        method: 'GET',
+        headers: { 'user-agent': ua, accept: '*/*', 'accept-language': 'en' },
+      }));
+      const monitor = createConsoleMonitorMock({ getNetworkRequests: (() => requests) as any });
+      const h = new TlsBotHandlers({ consoleMonitor: monitor as any });
+      const res = await h.handleNetworkBotDetectAnalyze({ limit: 5 });
+      const json = parseJson<Record<string, unknown>>(res);
+      const irc = json.interRequestConsistency as Record<string, unknown>;
+      expect(irc.consistencyScore).toBe(1.0);
+      expect(irc.uaDriftCount).toBe(0);
+      expect(irc.headerOrderDriftCount).toBe(0);
+    });
+
+    it('clamps consistencyScore to 0 when all requests drift', async () => {
+      const requests = Array.from({ length: 3 }, (_, i) => ({
+        requestId: `r${i}`,
+        url: `https://a.com/${i}`,
+        method: 'GET',
+        headers: { 'user-agent': `Chrome/${120 + i}`, accept: '*/*', 'accept-language': 'en' },
+      }));
+      const monitor = createConsoleMonitorMock({ getNetworkRequests: (() => requests) as any });
+      const h = new TlsBotHandlers({ consoleMonitor: monitor as any });
+      const res = await h.handleNetworkBotDetectAnalyze({ limit: 3 });
+      const json = parseJson<Record<string, unknown>>(res);
+      const irc = json.interRequestConsistency as Record<string, unknown>;
+      expect(Number(irc.consistencyScore)).toBeGreaterThanOrEqual(0);
+    });
   });
 
   describe('mode validation', () => {

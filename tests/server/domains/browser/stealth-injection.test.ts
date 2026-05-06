@@ -59,6 +59,25 @@ describe('StealthInjectionHandlers', () => {
     expect(body._nextStepHint).toBeDefined();
   });
 
+  it('returns patchManifest listing all injected APIs', async () => {
+    injectAllMock.mockResolvedValue(undefined);
+
+    const body = parseJson<Record<string, unknown>>(await handlers.handleStealthInject({})) as any;
+
+    expect(body.patchManifest).toBeDefined();
+    expect(Array.isArray(body.patchManifest)).toBe(true);
+    expect(body.patchManifest.length).toBeGreaterThanOrEqual(10);
+    expect(body.patchManifest[0]).toMatchObject({
+      api: expect.any(String),
+      method: expect.any(String),
+    });
+    // Verify known critical patches are present
+    const apis = body.patchManifest.map((p: any) => p.api);
+    expect(apis).toContain('navigator.webdriver');
+    expect(apis).toContain('window.chrome');
+    expect(apis).toContain('performance.now / Date.now');
+  });
+
   it('sets a realistic user agent and defaults platform to windows', async () => {
     setRealisticUserAgentMock.mockResolvedValue(undefined);
 
