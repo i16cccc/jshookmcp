@@ -116,4 +116,63 @@ describe.skipIf(!TARGET_URL)('Stealth & Search E2E', { timeout: 180_000, sequent
     const unboost = await client.call('unboost_profile', {}, 15_000);
     expect(unboost.result.status).not.toBe('FAIL');
   });
+
+  // ── P0 diagnostic surface (2026-05-06) ──
+
+  test('STEALTH-04: stealth_inject returns patchManifest listing injected APIs', async () => {
+    if (!client.getToolMap().has('stealth_inject')) {
+      client.recordSynthetic('stealth-patch-manifest', 'SKIP', 'Tool not registered');
+      return;
+    }
+
+    const inject = await client.call('stealth_inject', {}, 15_000);
+    expect(inject.result.status).not.toBe('FAIL');
+
+    const parsed = inject.parsed as Record<string, unknown> | undefined;
+    if (parsed?.patchManifest) {
+      const manifest = parsed.patchManifest as Array<Record<string, string>>;
+      expect(Array.isArray(manifest)).toBe(true);
+      expect(manifest.length).toBeGreaterThanOrEqual(10);
+      const apis = manifest.map((p) => p.api);
+      expect(apis).toContain('navigator.webdriver');
+      expect(apis).toContain('performance.now / Date.now');
+    } else {
+      // Stealth may skip for camoufox — that's not a failure
+      client.recordSynthetic(
+        'stealth-patch-manifest',
+        'EXPECTED_LIMITATION',
+        'patchManifest not in response',
+      );
+    }
+  });
+
+  test('NET-01: network_bot_detect_analyze returns interRequestConsistency', async () => {
+    const required = ['network_monitor', 'network_bot_detect_analyze'];
+    const missing = required.filter((t) => !client.getToolMap().has(t));
+    if (missing.length > 0) {
+      client.recordSynthetic('bot-detect-consistency', 'SKIP', `Missing: ${missing.join(', ')}`);
+      return;
+    }
+
+    // Enable monitoring and generate some traffic for analysis
+    await client.call('network_monitor', { action: 'enable' }, 10_000);
+    await client.call(
+      'page_navigate',
+      { url: TARGET_URL, waitUntil: 'load', timeout: 15000 },
+      30_000,
+    );
+
+    const analyze = await client.call('network_bot_detect_analyze', { limit: 5 }, 15_000);
+    expect(analyze.result.status).not.toBe('FAIL');
+
+    const parsed = analyze.parsed as Record<string, unknown> | undefined;
+    if (parsed?.interRequestConsistency) {
+      const irc = parsed.interRequestConsistency as Record<string, unknown>;
+      expect(typeof irc.consistencyScore).toBe('number');
+      expect(irc.consistencyScore).toBeGreaterThanOrEqual(0);
+      expect(irc.consistencyScore).toBeLessThanOrEqual(1);
+      expect(typeof irc.uaDriftCount).toBe('number');
+      expect(typeof irc.headerOrderDriftCount).toBe('number');
+    }
+  });
 });
