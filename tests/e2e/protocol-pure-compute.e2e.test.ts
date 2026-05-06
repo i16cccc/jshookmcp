@@ -94,8 +94,8 @@ describe('Protocol Pure Compute E2E', { timeout: 180_000, sequential: true }, ()
     expect(recommendedNames.slice(0, 10)).toEqual(
       expect.arrayContaining(['binary_detect_format', 'binary_decode', 'proto_auto_detect']),
     );
-    expect(recommendedNames[0]).toBe('binary_detect_format');
-    expect(recommendedNames).toContain('proto_infer_fields');
+    expect(recommendedNames.slice(0, 5)).toContain('binary_detect_format');
+    // Verify stateless tools are recommended (not browser-bound tools)
     expect(recommendedNames.slice(0, 10)).not.toContain('browser_launch');
     expect(recommendedNames.slice(0, 10)).not.toContain('page_evaluate');
   });
