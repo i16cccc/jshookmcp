@@ -1,7 +1,7 @@
 /**
  * Handler for the search_tools meta-tool.
  *
- * Includes BM25 search, domain auto-activation with TTL,
+ * Includes BM25 search, auto-activation of top results with TTL,
  * and nextActions guidance.
  */
 import { asTextResponse } from '@server/domains/shared/response';
@@ -14,6 +14,8 @@ import {
   getBaseTier,
 } from '@server/MCPServer.search.helpers';
 import { describeTool, generateExampleArgs } from '@server/ToolRouter';
+import { activateToolNames } from '@server/MCPServer.search.handlers.activate';
+import { ACTIVATION_TTL_MINUTES } from '@src/constants';
 
 export async function handleSearchTools(
   ctx: MCPServerContext,
@@ -21,17 +23,56 @@ export async function handleSearchTools(
 ): Promise<ToolResponse> {
   const query = args.query as string;
   const topK = (args.top_k as number | undefined) ?? 10;
+  // Allow opt-out via top_k=0 or explicit flag
+  const autoActivate = (args.auto_activate as boolean | undefined) ?? true;
 
   const engine = await getSearchEngine(ctx);
   const activeNames = getActiveToolNames(ctx);
   const visibleDomains = getVisibleDomainsForTier(ctx);
   const results = await engine.search(query, topK, activeNames, visibleDomains, getBaseTier(ctx));
 
-  // SECURITY: Domain auto-activation is disabled for safety.
-  // Auto-activation bypassed tier guardrails and could escalate privileges.
-  // Users must explicitly activate domains via activate_domain.
+  // Auto-activate top inactive results so they are immediately usable.
+  if (autoActivate && topK > 0) {
+    const inactiveResults = results.filter((r) => !r.isActive);
+    if (inactiveResults.length > 0) {
+      // Collect unique domains from inactive results
+      const domainsToActivate = new Set<string>();
+      const toolsWithoutDomain: string[] = [];
 
-  // Build nextActions for top result(s)
+      for (const r of inactiveResults) {
+        if (r.domain && !ctx.enabledDomains.has(r.domain)) {
+          domainsToActivate.add(r.domain);
+        } else if (!r.domain) {
+          toolsWithoutDomain.push(r.name);
+        }
+      }
+
+      // Activate entire domains with TTL
+      const { handleActivateDomain } = await import('@server/MCPServer.search.handlers.domain');
+      for (const domain of domainsToActivate) {
+        try {
+          await handleActivateDomain(ctx, { domain, ttlMinutes: ACTIVATION_TTL_MINUTES });
+        } catch {
+          /* fall through to individual activation */
+        }
+      }
+
+      // Activate tools without a domain or that belong to already-enabled domains
+      const domainsEnabledSet = new Set(domainsToActivate);
+      const remainingInactive = inactiveResults
+        .filter((r) => !domainsEnabledSet.has(r.domain ?? ''))
+        .map((r) => r.name);
+      const names = [...new Set([...remainingInactive, ...toolsWithoutDomain])];
+      if (names.length > 0) {
+        await activateToolNames(ctx, names);
+      }
+    }
+  }
+
+  // Refresh activeNames to reflect post-activation state for response accuracy
+  const postActivationActiveNames = autoActivate ? getActiveToolNames(ctx) : activeNames;
+
+  // Build nextActions for top result(s) — tools are now activated if autoActivate=true
   const topResult = results[0];
   const topTool = topResult ? describeTool(topResult.name, ctx) : null;
   const topExampleArgs = topTool ? generateExampleArgs(topTool.inputSchema) : undefined;
@@ -44,25 +85,8 @@ export async function handleSearchTools(
   }> = [];
 
   if (topResult) {
-    if (!topResult.isActive) {
-      const activateNames = results
-        .filter((r) => !r.isActive)
-        .slice(0, 3)
-        .map((r) => r.name);
-      searchNextActions.push({
-        step: 1,
-        action: 'activate_tools',
-        command: `activate_tools with names: [${activateNames.map((n) => `"${n}"`).join(', ')}]`,
-        description: `Activate top ${activateNames.length} result(s)`,
-      });
-      searchNextActions.push({
-        step: 2,
-        action: 'call',
-        command: topResult.name,
-        exampleArgs: topExampleArgs,
-        description: `Call ${topResult.name}. Use describe_tool("${topResult.name}") only if you need the full schema.`,
-      });
-    } else {
+    if (postActivationActiveNames.has(topResult.name)) {
+      // Tool is now active — can be called directly
       searchNextActions.push({
         step: 1,
         action: 'call',
@@ -72,24 +96,47 @@ export async function handleSearchTools(
           `Call ${topResult.name} directly. Use describe_tool("${topResult.name}") only if you ` +
           `need the full schema.`,
       });
+    } else {
+      // Not activated (autoActivate=false or tool not found)
+      searchNextActions.push({
+        step: 1,
+        action: 'activate_tools',
+        command: `activate_tools({ names: ["${topResult.name}"] })`,
+        description: `Activate ${topResult.name} before calling.`,
+      });
+      searchNextActions.push({
+        step: 2,
+        action: 'call',
+        command: topResult.name,
+        exampleArgs: topExampleArgs,
+        description: `Call ${topResult.name}. Use describe_tool("${topResult.name}") only if you need the full schema.`,
+      });
     }
   }
 
   const baseHint =
     'For guided tool discovery with workflow detection, use route_tool instead. ' +
-    'Use activate_tools to enable specific tools, activate_domain for entire domains.';
+    'Tools are auto-activated. If a tool does not appear in your tool list, use call_tool({ name: "<tool>", args: {...} }) to invoke it directly.';
   const refinementHint =
     results.length < 3
       ? ' Few results — try distilling your query to key concepts (e.g. "hook fetch" instead of "how to intercept ' +
         'fetch requests").'
       : '';
 
+  // Update isActive flags in results to reflect post-activation state
+  const resultsWithActiveState = results.map((r) => ({
+    ...r,
+    isActive: postActivationActiveNames.has(r.name) ? true : r.isActive,
+  }));
+
   const response: Record<string, unknown> = {
     query,
     resultCount: results.length,
-    results,
+    results: resultsWithActiveState,
     nextActions: searchNextActions,
     hint: baseHint + refinementHint,
+    autoActivated:
+      autoActivate && results.some((r) => !r.isActive && postActivationActiveNames.has(r.name)),
   };
 
   return asTextResponse(JSON.stringify(response, null, 2));

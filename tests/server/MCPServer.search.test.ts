@@ -250,6 +250,7 @@ interface SearchToolsResponse {
   resultCount: number;
   hint: string;
   nextActions: any[];
+  autoActivated?: boolean;
   autoActivatedDomains?: string[];
 }
 
@@ -368,7 +369,7 @@ describe('MCPServer.search', () => {
     expect(response.hint).toContain(
       'For guided tool discovery with workflow detection, use route_tool instead',
     );
-    expect(response.hint).toContain('activate_tools to enable specific tools');
+    expect(response.hint).toContain('auto-activated');
   });
 
   it('returns direct-call nextActions with exampleArgs instead of forcing describe_tool', async () => {
@@ -392,22 +393,16 @@ describe('MCPServer.search', () => {
     expect(response.nextActions).toEqual([
       {
         step: 1,
-        action: 'activate_tools',
-        command: 'activate_tools with names: ["page_navigate"]',
-        description: 'Activate top 1 result(s)',
-      },
-      {
-        step: 2,
         action: 'call',
         command: 'page_navigate',
         exampleArgs: {},
         description:
-          'Call page_navigate. Use describe_tool("page_navigate") only if you need the full schema.',
+          'Call page_navigate directly. Use describe_tool("page_navigate") only if you need the full schema.',
       },
     ]);
   });
 
-  it('does not auto-activate domains when search finds inactive tools (auto-activation disabled)', async () => {
+  it('respects auto_activate=false to disable auto-activation', async () => {
     const ctx = createCtx({ enabledDomains: new Set<string>() });
     registerSearchMetaTools(ctx);
     const searchHandler = ctx.registeredToolsForTest.get('search_tools')!.handler;
@@ -425,14 +420,16 @@ describe('MCPServer.search', () => {
     ];
 
     const response = parseResponse<SearchToolsResponse>(
-      await searchHandler({ query: 'page', top_k: 5 }),
+      await searchHandler({ query: 'page', top_k: 5, auto_activate: false }),
     );
 
-    // Auto-activation is now disabled — no domains should be auto-activated
-    expect(response.autoActivatedDomains).toBeUndefined();
+    // With auto_activate=false, nothing should be auto-activated
+    expect(response.autoActivated).toBeFalsy();
+    // Tool should still be inactive
+    expect(response.results[0]?.isActive).toBe(false);
   });
 
-  it('does not auto-activate when all search results are already active', async () => {
+  it('does not set autoActivated when all search results are already active', async () => {
     const ctx = createCtx();
     ctx.activatedToolNames.add('page_navigate');
     ctx.enabledDomains.add('browser');
@@ -455,10 +452,11 @@ describe('MCPServer.search', () => {
       await searchHandler({ query: 'page', top_k: 5 }),
     );
 
-    expect(response.autoActivatedDomains).toBeUndefined();
+    // Nothing was activated since it was already active
+    expect(response.autoActivated).toBeFalsy();
   });
 
-  it('does not auto-activate domains that are already enabled', async () => {
+  it('sets autoActivated when domain is already enabled but tool is inactive', async () => {
     const ctx = createCtx();
     ctx.enabledDomains.add('browser');
 
@@ -480,8 +478,8 @@ describe('MCPServer.search', () => {
       await searchHandler({ query: 'page', top_k: 5 }),
     );
 
-    // Domain already enabled, should not auto-activate
-    expect(response.autoActivatedDomains).toBeUndefined();
+    // Domain already enabled, but tool was activated individually
+    expect(response.autoActivated).toBeTruthy();
   });
 
   it('invalidates the cached search engine when extension signature changes', async () => {

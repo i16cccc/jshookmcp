@@ -69,6 +69,12 @@ function buildMetaToolDefinitions(ctx: MCPServerContext): MetaToolDef[] {
               'Pass only those distilled keywords — not the original user request.',
           },
           top_k: { type: 'number', description: 'Max results to return (default: 10, max: 30)' },
+          auto_activate: {
+            type: 'boolean',
+            description:
+              'Auto-activate found tools so they are immediately callable. Set false to only search without activating (default: true)',
+            default: true,
+          },
         },
         required: ['query'],
       },
