@@ -15,6 +15,7 @@ import {
   SEARCH_RECENCY_TRACKER_MAX,
   SEARCH_RECENCY_WINDOW_MS,
   SEARCH_RRF_K,
+  SEARCH_SCENE_KEYWORD_WEIGHT,
   SEARCH_TIER_PENALTY,
   SEARCH_TIER_PENALTY_SEARCH,
   SEARCH_TIER_PENALTY_WORKFLOW,
@@ -81,11 +82,15 @@ function buildSearchCacheKey(
   query: string,
   topK: number,
   visibleDomains?: ReadonlySet<string>,
+  extensionEtag?: string,
 ): string {
-  if (!visibleDomains || visibleDomains.size === 0) {
-    return `${query}\0${topK}`;
-  }
-  return `${query}\0${topK}\0${[...visibleDomains].toSorted().join('|')}`;
+  const base = `${query}\0${topK}`;
+  const domains =
+    !visibleDomains || visibleDomains.size === 0
+      ? ''
+      : `\0${[...visibleDomains].toSorted().join('|')}`;
+  const etag = extensionEtag ? `\0${extensionEtag}` : '';
+  return `${base}${domains}${etag}`;
 }
 
 // ── LRU Cache ──
@@ -139,6 +144,10 @@ export class ToolSearchEngine {
   private readonly domainScoreMultipliers?: ReadonlyMap<string, number>;
   private readonly toolScoreMultipliers?: ReadonlyMap<string, number>;
 
+  /** Extension identity tag — included in query cache keys so extension
+   *  reloads invalidate stale cached results. Set externally by the caller. */
+  extensionEtag = '';
+
   /** Name → doc index for O(1) lookup during affinity expansion. */
   private readonly docNameIndex = new Map<string, number>();
   /** Prefix-group affinity graph: docIndex → neighbor edges. */
@@ -171,6 +180,7 @@ export class ToolSearchEngine {
     domainScoreMultipliers?: ReadonlyMap<string, number>,
     toolScoreMultipliers?: ReadonlyMap<string, number>,
     searchConfig?: SearchConfig,
+    sceneKeywords?: ReadonlyMap<string, readonly string[]>,
   ) {
     const source = tools ?? allTools;
     this.domainOverrides = domainOverrides;
@@ -242,6 +252,15 @@ export class ToolSearchEngine {
         entry.tf++;
         entry.weight = Math.max(entry.weight, SEARCH_PARAM_TOKEN_WEIGHT);
         termFreqs.set(token, entry);
+      }
+      const toolSceneTokens = sceneKeywords?.get(tool.name);
+      if (toolSceneTokens) {
+        for (const token of toolSceneTokens) {
+          const entry = termFreqs.get(token) ?? { tf: 0, weight: 0 };
+          entry.tf++;
+          entry.weight = Math.max(entry.weight, SEARCH_SCENE_KEYWORD_WEIGHT);
+          termFreqs.set(token, entry);
+        }
       }
 
       for (const [token, { tf, weight }] of termFreqs) {
@@ -346,7 +365,7 @@ export class ToolSearchEngine {
     // A cached entry stays valid while the live vector weight drifts within
     // SEARCH_CACHE_VECTOR_WEIGHT_TOLERANCE of the weight recorded at insert
     // time. Avoids the full flush that the previous epoch counter caused.
-    const cacheKey = buildSearchCacheKey(query, topK, visibleDomains);
+    const cacheKey = buildSearchCacheKey(query, topK, visibleDomains, this.extensionEtag);
     const cached = this.queryCache.get(cacheKey);
     if (cached && this.isCachedEntryFresh(cached)) {
       const active = activeToolNames ?? new Set<string>();
@@ -425,11 +444,13 @@ export class ToolSearchEngine {
       }
     }
 
+    // ── Curated intent-routing bonuses ──
+    // Applied BEFORE graph expansion so intent-targeted tools contribute
+    // to affinity / domain-hub expansion, preventing zero-score dead zone.
+    this.applyIntentBonusBand(scores, intentToolBonuses);
+
     // ── Graph expansion: affinity + domain hub (§4.1.4) ──
     this.applyGraphExpansion(scores);
-
-    // ── Curated intent-routing bonuses ──
-    this.applyIntentBonusBand(scores, intentToolBonuses);
 
     // ── Recency / frequency boost ──
     this.applyRecencyBoost(scores);

@@ -114,6 +114,7 @@ import {
   isBrowserOrNetworkTask,
   isMaintenanceTask,
   isStatelessComputeTask,
+  detectCrossDomainFromDependencies,
 } from '@server/ToolRouter.intent';
 
 import {
@@ -165,8 +166,37 @@ export async function routeToolRequest(
     getBaseTier(ctx),
   );
 
+  // ── Cross-domain structural workflow detection (§4.1.5) ──
+  // When no explicit workflow/route matched but top results cluster across
+  // complementary domains, infer a coordinated tool sequence from domain topology.
+  const crossDomainPattern =
+    !routeMatch && !workflow
+      ? detectCrossDomainFromDependencies(searchResults.slice(0, 10), availableToolNames)
+      : null;
+
   let finalResults: ToolSearchResult[] = [];
-  if (routeMatch?.workflow.route.kind === 'preset') {
+  if (crossDomainPattern) {
+    const workflowTools = crossDomainPattern.tools
+      .filter((name) => availableToolNames.has(name))
+      .map((name, index) => ({
+        name,
+        domain: getToolDomainFromContext(name, ctx),
+        shortDescription:
+          searchResults.find((r) => r.name === name)?.shortDescription ??
+          ctx.extensionToolsByName.get(name)?.tool.description ??
+          '',
+        score: crossDomainPattern.priority - index * 0.01,
+        isActive: isToolActive(name, ctx),
+      }));
+
+    const workflowNames = new Set(crossDomainPattern.tools);
+    const otherResults = searchResults.filter((result) => !workflowNames.has(result.name));
+    finalResults = [...workflowTools, ...otherResults];
+    logger.info('[ToolRouter] Cross-domain workflow detected', {
+      pattern: crossDomainPattern.id,
+      domains: crossDomainPattern.domains,
+    });
+  } else if (routeMatch?.workflow.route.kind === 'preset') {
     const presetTools = buildPresetRecommendations(
       routeMatch,
       routingState,

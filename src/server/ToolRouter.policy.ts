@@ -8,6 +8,17 @@ import type { ToolSearchResult } from '@server/ToolSearch';
 import type { WorkflowRule, RoutedWorkflowMatch } from '@server/ToolRouter.intent';
 import type { RoutingState } from '@server/ToolRouter.probe';
 import type { RouterResponse } from '@server/ToolRouter';
+import {
+  RERANK_MAINTENANCE_PENALTY,
+  RERANK_STATELESS_INTERACTIVE_PENALTY,
+  RERANK_STATELESS_CORE_PENALTY,
+  RERANK_STATELESS_COMPUTE_BOOST,
+  RERANK_STATELESS_SPECIFIC_TOOL_BOOST,
+  RERANK_BROWSER_LAUNCH_BOOST,
+  RERANK_BROWSER_ATTACH_BOOST,
+  RERANK_NETWORK_MONITOR_BOOST,
+  RERANK_NETWORK_GET_REQUESTS_BOOST,
+} from '@src/constants';
 import { getToolDomain } from '@server/ToolCatalog';
 import { getAllManifests } from '@server/registry/index';
 import {
@@ -299,7 +310,7 @@ export function rerankResultsForContext(
     let score = result.score;
 
     if (browserOrNetworkTask && !maintenanceTask && result.domain === 'maintenance') {
-      score *= 0.1;
+      score *= RERANK_MAINTENANCE_PENALTY;
     }
 
     if (statelessComputeTask) {
@@ -310,7 +321,7 @@ export function rerankResultsForContext(
         result.domain === 'hooks' ||
         result.domain === 'maintenance'
       ) {
-        score *= 0.35;
+        score *= RERANK_STATELESS_INTERACTIVE_PENALTY;
       }
 
       if (
@@ -318,7 +329,7 @@ export function rerankResultsForContext(
         result.domain === 'streaming' ||
         result.domain === 'workflow'
       ) {
-        score *= 0.2;
+        score *= RERANK_STATELESS_CORE_PENALTY;
       }
 
       if (
@@ -328,7 +339,7 @@ export function rerankResultsForContext(
         result.domain === 'sourcemap' ||
         result.domain === 'core'
       ) {
-        score *= 1.6;
+        score *= RERANK_STATELESS_COMPUTE_BOOST;
       }
 
       if (
@@ -341,19 +352,19 @@ export function rerankResultsForContext(
         result.name === 'proto_infer_state_machine' ||
         result.name === 'proto_fingerprint'
       ) {
-        score *= 1.25;
+        score *= RERANK_STATELESS_SPECIFIC_TOOL_BOOST;
       }
     }
 
     if (browserOrNetworkTask) {
       if (!state.hasActivePage && result.name === 'browser_launch') {
-        score *= 1.4;
+        score *= RERANK_BROWSER_LAUNCH_BOOST;
       }
       if (!state.hasActivePage && result.name === 'browser_attach') {
-        score *= 1.2;
+        score *= RERANK_BROWSER_ATTACH_BOOST;
       }
       if (state.hasActivePage && !state.networkEnabled && result.name === 'network_monitor') {
-        score *= 1.35;
+        score *= RERANK_NETWORK_MONITOR_BOOST;
       }
       if (
         state.hasActivePage &&
@@ -361,7 +372,7 @@ export function rerankResultsForContext(
         state.capturedRequestCount > 0 &&
         result.name === 'network_get_requests'
       ) {
-        score *= 1.5;
+        score *= RERANK_NETWORK_GET_REQUESTS_BOOST;
       }
     }
 

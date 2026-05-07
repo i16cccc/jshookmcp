@@ -109,4 +109,12 @@ export interface DomainManifest<
     /** Edge weight for affinity boosting (default 0.3). */
     readonly weight?: number;
   }>;
+
+  /**
+   * Per-tool generic technology scene keywords for BM25 recall improvement.
+   * These are purely technical terms (e.g., "signature", "cipher", "opcode"),
+   * never brand or vendor names. Indexed as high-weight tokens during search
+   * engine construction.
+   */
+  readonly sceneKeywords?: Readonly<Record<string, readonly string[]>>;
 }

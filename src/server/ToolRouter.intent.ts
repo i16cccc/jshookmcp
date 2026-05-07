@@ -169,3 +169,132 @@ export function isMaintenanceTask(task: string): boolean {
 export function isStatelessComputeTask(task: string): boolean {
   return STATELESS_COMPUTE_TASK_PATTERN.test(task);
 }
+
+/**
+ * Derive cross-domain workflow patterns dynamically from manifest toolDependencies.
+ * When top search results span domains connected by dependency edges, this
+ * suggests a coordinated tool sequence based purely on declared tool relationships
+ * — no hardcoded workflow patterns. The dependency graph is the single source
+ * of truth for cross-domain tool relationships.
+ */
+export interface DynamicCrossDomainPattern {
+  id: string;
+  hint: string;
+  domains: string[];
+  tools: string[];
+  priority: number;
+}
+
+export function detectCrossDomainFromDependencies(
+  results: ReadonlyArray<{ name: string; domain: string | null }>,
+  availableToolNames: ReadonlySet<string>,
+): DynamicCrossDomainPattern | null {
+  if (results.length < 2) return null;
+
+  const manifests = getAllManifests();
+  if (manifests.length === 0) return null;
+
+  // Build domain → set of domains it connects to via toolDependencies
+  const domainEdges = new Map<string, Set<string>>();
+  const domainTools = new Map<string, Set<string>>();
+
+  for (const m of manifests) {
+    if (!m.toolDependencies) continue;
+    for (const dep of m.toolDependencies) {
+      const domains = new Set(getEffectiveDomainsForDependency(dep, manifests));
+      const fromDomain = getToolDomainForDependency(dep.from, manifests);
+      const toDomain = getToolDomainForDependency(dep.to, manifests);
+
+      if (fromDomain && toDomain && fromDomain !== toDomain) {
+        const edges = domainEdges.get(fromDomain) ?? new Set<string>();
+        edges.add(toDomain);
+        domainEdges.set(fromDomain, edges);
+
+        const tools = domainTools.get(fromDomain) ?? new Set<string>();
+        tools.add(dep.from);
+        if (availableToolNames.has(dep.to)) tools.add(dep.to);
+        domainTools.set(fromDomain, tools);
+      }
+
+      for (const d of domains) {
+        if (d !== fromDomain && fromDomain) {
+          const edges = domainEdges.get(fromDomain) ?? new Set<string>();
+          edges.add(d);
+          domainEdges.set(fromDomain, edges);
+        }
+      }
+    }
+  }
+
+  // Collect domains present in top results
+  const resultDomains = new Set<string>();
+  for (const r of results) {
+    if (r.domain) {
+      resultDomains.add(r.domain);
+    }
+  }
+
+  if (resultDomains.size < 2) return null;
+
+  // Find domain pairs in results that have declared dependency edges
+  const resultDomainArray = [...resultDomains];
+  for (let i = 0; i < resultDomainArray.length; i++) {
+    for (let j = i + 1; j < resultDomainArray.length; j++) {
+      const d1 = resultDomainArray[i]!;
+      const d2 = resultDomainArray[j]!;
+      const connected = domainEdges.get(d1)?.has(d2) || domainEdges.get(d2)?.has(d1);
+      if (!connected) continue;
+
+      // Collect dependency-declared tools from both domains
+      const linkedTools = new Set<string>();
+      for (const m of manifests) {
+        if (!m.toolDependencies) continue;
+        for (const dep of m.toolDependencies) {
+          const fromDomain = getToolDomainForDependency(dep.from, manifests);
+          const toDomain = getToolDomainForDependency(dep.to, manifests);
+          if ((fromDomain === d1 && toDomain === d2) || (fromDomain === d2 && toDomain === d1)) {
+            if (availableToolNames.has(dep.from)) linkedTools.add(dep.from);
+            if (availableToolNames.has(dep.to)) linkedTools.add(dep.to);
+          }
+        }
+      }
+
+      const sequenceTools = [...linkedTools];
+      if (sequenceTools.length < 2) continue;
+
+      return {
+        id: `dynamic-${d1}-${d2}`,
+        hint: `${d1} ↔ ${d2} (declared dependency)`,
+        domains: [d1, d2],
+        tools: sequenceTools.slice(0, 5),
+        priority: 75,
+      };
+    }
+  }
+
+  return null;
+}
+
+function getToolDomainForDependency(
+  toolName: string,
+  manifests: ReturnType<typeof getAllManifests>,
+): string | null {
+  for (const m of manifests) {
+    for (const reg of m.registrations) {
+      if (reg.tool.name === toolName) {
+        return reg.domain ?? m.domain;
+      }
+    }
+  }
+  return null;
+}
+
+function getEffectiveDomainsForDependency(
+  dep: { from: string; to: string },
+  manifests: ReturnType<typeof getAllManifests>,
+): string[] {
+  return [
+    getToolDomainForDependency(dep.from, manifests),
+    getToolDomainForDependency(dep.to, manifests),
+  ].filter((d): d is string => d !== null);
+}

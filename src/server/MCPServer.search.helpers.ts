@@ -13,7 +13,11 @@ import {
 import type { ToolProfile } from '@server/ToolCatalog';
 import type { MCPServerContext } from '@server/MCPServer.context';
 import { ToolSearchEngine } from '@server/ToolSearch';
-import { getAllRegistrations, ensureAllDomainsLoaded } from '@server/registry/index';
+import {
+  getAllRegistrations,
+  ensureAllDomainsLoaded,
+  getAllManifests,
+} from '@server/registry/index';
 import { SEARCH_WORKFLOW_DOMAIN_BOOST_MULTIPLIER } from '@src/constants';
 
 // ── active-tool helpers ──
@@ -97,6 +101,24 @@ interface CachedSearchEngine {
 const searchEngineCache = new WeakMap<MCPServerContext, CachedSearchEngine>();
 
 /**
+ * Collect per-tool scene keywords from all loaded domain manifests.
+ * These are generic technology terms that improve BM25 recall for domain-specific
+ * queries (e.g., "signature" for encryption tools, "opcode" for debugger tools).
+ */
+function buildSceneKeywordsFromManifests(): ReadonlyMap<string, readonly string[]> {
+  const map = new Map<string, readonly string[]>();
+  for (const manifest of getAllManifests()) {
+    if (!manifest.sceneKeywords) continue;
+    for (const [toolName, keywords] of Object.entries(manifest.sceneKeywords)) {
+      if (keywords.length > 0) {
+        map.set(toolName, keywords);
+      }
+    }
+  }
+  return map;
+}
+
+/**
  * Build a cache signature from all inputs that affect ToolSearchEngine construction.
  * Changes in extension tools or workflow runtime state invalidate the cache.
  */
@@ -139,7 +161,9 @@ export async function getSearchEngine(ctx: MCPServerContext): Promise<ToolSearch
     domainScoreMultipliers,
     toolScoreMultipliers,
     ctx.config.search,
+    buildSceneKeywordsFromManifests(),
   );
+  engine.extensionEtag = signature;
   searchEngineCache.set(ctx, { signature, engine });
   return engine;
 }

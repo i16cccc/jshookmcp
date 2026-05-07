@@ -110,7 +110,9 @@ export function blendRrfIntoScores(scores: Float64Array, rrfScores: Float64Array
     const bm25Original = scores[i]!;
     const rrfRescaled = rrfScore * SEARCH_RRF_RESCALE_FACTOR;
     const blend = SEARCH_RRF_BM25_BLEND;
-    scores[i] = Math.max(bm25Original, rrfRescaled * blend) + rrfRescaled * blend;
+    // Additive fusion: BM25 provides lexical relevance baseline,
+    // RRF contributes multi-signal consensus. Neither signal is discarded.
+    scores[i] = bm25Original + rrfRescaled * blend;
   }
 }
 
