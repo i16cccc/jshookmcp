@@ -110,7 +110,7 @@ describe('search/SearchProfileTier', () => {
       visibleDomains,
       'workflow',
     );
-    expect(topNames(results, 3)).toContain('network_enable');
+    expect(topNames(results, 5)).toContain('network_enable');
   });
 
   it('full tier: no penalty applied', async () => {

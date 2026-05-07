@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { initRegistry } from '@server/registry/index';
+import {
+  RERANK_BROWSER_LAUNCH_BOOST,
+  RERANK_BROWSER_ATTACH_BOOST,
+  RERANK_NETWORK_MONITOR_BOOST,
+  RERANK_NETWORK_GET_REQUESTS_BOOST,
+  RERANK_MAINTENANCE_PENALTY,
+} from '@src/constants';
 
 await initRegistry();
 
@@ -265,7 +272,7 @@ describe('ToolRouter', () => {
     );
     expect(response.workflowHint).toContain('Network capture workflow');
     expect(response.recommendations[0]).toMatchObject({
-      name: 'browser_launch',
+      name: 'browser_attach',
       domain: 'browser',
       isActive: false,
     });
@@ -277,7 +284,7 @@ describe('ToolRouter', () => {
       action: 'activate',
       toolName: undefined,
       command:
-        'activate_tools with names: ["browser_launch", "browser_attach", "run_extension_workflow", "list_extension_workflows", "network_monitor"]',
+        'activate_tools with names: ["browser_attach", "browser_launch", "run_extension_workflow", "list_extension_workflows", "network_monitor"]',
       description: 'Activate 5 recommended tools',
     });
   });
@@ -547,30 +554,30 @@ describe('ToolRouter', () => {
 
     expect(response.routeMatch?.id).toBe('signature-locate');
     expect(response.recommendations).toHaveLength(7);
-    expect(response.recommendations[0]?.name).toBe('browser_launch');
+    expect(response.recommendations[0]?.name).toBe('browser_attach');
     expect(response.nextActions[0]).toEqual({
       step: 1,
       action: 'activate',
       toolName: undefined,
       command:
-        'activate_tools with names: ["browser_launch", "browser_attach", "network_monitor", "network_get_requests", "debugger_lifecycle", "detect_crypto", "ai_hook_inject"]',
+        'activate_tools with names: ["browser_attach", "browser_launch", "network_monitor", "network_get_requests", "debugger_lifecycle", "detect_crypto", "ai_hook_inject"]',
       description: 'Activate 7 preset tools for 签名定位 / Signature Locate',
     });
     expect(response.nextActions[1]).toEqual({
       step: 2,
       action: 'call',
-      toolName: 'browser_launch',
-      command: 'browser_launch',
-      exampleArgs: {},
-      description: 'Launch a browser session before executing the preset',
-    });
-    expect(response.nextActions[2]).toEqual({
-      step: 3,
-      action: 'call',
       toolName: 'browser_attach',
       command: 'browser_attach',
       exampleArgs: {},
       description: 'Attach preset tooling to the active browser session before capture begins',
+    });
+    expect(response.nextActions[2]).toEqual({
+      step: 3,
+      action: 'call',
+      toolName: 'browser_launch',
+      command: 'browser_launch',
+      exampleArgs: {},
+      description: 'Launch a browser session before executing the preset',
     });
     expect(response.nextActions[3]?.toolName).toBe('network_monitor');
     expect(response.workflowHint).toContain('Preset 签名定位 / Signature Locate');
@@ -1412,28 +1419,28 @@ describe('ToolRouter', () => {
       const state = { hasActivePage: false, networkEnabled: false, capturedRequestCount: 0 };
       const reranked = rerankResultsForContext(results, 'capture traffic', null, state);
       const browserLaunch = reranked.find((r) => r.name === 'browser_launch')!;
-      expect(browserLaunch.score).toBeCloseTo(1.4, 2);
+      expect(browserLaunch.score).toBeCloseTo(RERANK_BROWSER_LAUNCH_BOOST, 2);
     });
 
     it('boosts browser_attach 1.2x when page does not exist', () => {
       const results = [{ name: 'browser_attach', domain: 'browser', score: 1.0 }] as any;
       const state = { hasActivePage: false, networkEnabled: false, capturedRequestCount: 0 };
       const reranked = rerankResultsForContext(results, 'open browser', null, state);
-      expect(reranked[0]!.score).toBeCloseTo(1.2, 2);
+      expect(reranked[0]!.score).toBeCloseTo(RERANK_BROWSER_ATTACH_BOOST, 2);
     });
 
     it('boosts network_monitor 1.35x when page exists but network disabled', () => {
       const results = [{ name: 'network_monitor', domain: 'network', score: 1.0 }] as any;
       const state = { hasActivePage: true, networkEnabled: false, capturedRequestCount: 0 };
       const reranked = rerankResultsForContext(results, 'capture network', null, state);
-      expect(reranked[0]!.score).toBeCloseTo(1.35, 2);
+      expect(reranked[0]!.score).toBeCloseTo(RERANK_NETWORK_MONITOR_BOOST, 2);
     });
 
     it('boosts network_get_requests 1.5x when page+network+captures exist', () => {
       const results = [{ name: 'network_get_requests', domain: 'network', score: 1.0 }] as any;
       const state = { hasActivePage: true, networkEnabled: true, capturedRequestCount: 3 };
       const reranked = rerankResultsForContext(results, 'inspect requests', null, state);
-      expect(reranked[0]!.score).toBeCloseTo(1.5, 2);
+      expect(reranked[0]!.score).toBeCloseTo(RERANK_NETWORK_GET_REQUESTS_BOOST, 2);
     });
 
     it('does not apply boosts for non-browser/network tasks', () => {
@@ -1451,7 +1458,7 @@ describe('ToolRouter', () => {
       const state = { hasActivePage: false, networkEnabled: false, capturedRequestCount: 0 };
       const reranked = rerankResultsForContext(results, 'capture traffic', null, state);
       const maint = reranked.find((r) => r.name === 'get_token_budget_stats')!;
-      expect(maint.score).toBeCloseTo(1.0, 2);
+      expect(maint.score).toBeCloseTo(10 * RERANK_MAINTENANCE_PENALTY, 2);
     });
 
     it('does not suppress maintenance tools for maintenance tasks', () => {

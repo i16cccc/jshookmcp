@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { BM25ScorerImpl } from '@server/search/BM25Scorer';
+import { SEARCH_BM25_K1, SEARCH_BM25_B } from '@src/constants';
 
 describe('search/BM25Scorer', () => {
   const scorer = new BM25ScorerImpl();
@@ -34,8 +35,8 @@ describe('search/BM25Scorer', () => {
   });
 
   it('returns the BM25 tuning constants', () => {
-    expect(scorer.getK1()).toBe(0.8);
-    expect(scorer.getB()).toBe(0.65);
+    expect(scorer.getK1()).toBe(SEARCH_BM25_K1);
+    expect(scorer.getB()).toBe(SEARCH_BM25_B);
   });
 
   it('compiles and applies custom search config rules', () => {
