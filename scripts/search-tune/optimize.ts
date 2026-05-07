@@ -28,9 +28,9 @@ import {
   type TrialParams,
 } from './search-space';
 
-const __dirname = pathResolve(fileURLToPath(import.meta.url), '..');
-const ROOT = pathResolve(__dirname, '..', '..');
-const SELF = pathResolve(__dirname, 'optimize.ts');
+const scriptDir = pathResolve(fileURLToPath(import.meta.url), '..');
+const ROOT = pathResolve(scriptDir, '..', '..');
+const SELF = pathResolve(scriptDir, 'optimize.ts');
 const CPU_COUNT = cpus().length;
 
 // ═══════════════════════════════════════════════════════
@@ -38,7 +38,7 @@ const CPU_COUNT = cpus().length;
 // ═══════════════════════════════════════════════════════
 
 async function runWorker(): Promise<void> {
-  const spec = JSON.parse(process.env.__TRIAL_SPEC!) as TrialSpec;
+  const spec = JSON.parse(process.env.TRIAL_SPEC_ENV!) as TrialSpec;
   const startMs = Date.now();
 
   const { initRegistry } = await import('../../src/server/registry/index');
@@ -47,15 +47,29 @@ async function runWorker(): Promise<void> {
   const { ToolSearchEngine } = await import('../../src/server/search/ToolSearchEngineImpl');
   const { buildSearchQualityFixture } =
     await import('../../tests/server/search/fixtures/search-quality.fixture');
+  const { rerankResultsForContext } = await import('../../src/server/ToolRouter.policy');
 
   const fixture = buildSearchQualityFixture();
-  const engine = new ToolSearchEngine(
+  const fixtureEngine = new ToolSearchEngine(
     [...fixture.tools],
     fixture.domainByToolName,
     undefined,
     undefined,
     undefined,
   );
+
+  // Full-registry engine for rerank-state cases that need browser_launch,
+  // network_monitor, and other tools not in the fixture subset.
+  const { getAllManifests } = await import('../../src/server/registry/index');
+  const allTools: any[] = [];
+  const fullDomainMap = new Map<string, string>();
+  for (const m of getAllManifests()) {
+    for (const r of m.registrations) {
+      allTools.push(r.tool);
+      fullDomainMap.set(r.tool.name, m.domain);
+    }
+  }
+  const fullEngine = new ToolSearchEngine(allTools, fullDomainMap, undefined, undefined, undefined);
 
   const lexicalCases = fixture.cases;
   const profileCases = [
@@ -120,19 +134,102 @@ async function runWorker(): Promise<void> {
     },
   ];
 
-  const cases = spec.dataset === 'search-quality' ? lexicalCases : profileCases;
+  // Rerank-state cases — exercise rerank multipliers with varied runtime states.
+  // These use the full engine so tools like browser_launch, network_monitor exist.
+  const rerankStateCases = [
+    // Browser launch boost: no browser active → browser_launch should rank high
+    {
+      id: 'r-browser-launch',
+      query: 'open browser for automation',
+      topK: 10,
+      expectations: [{ tool: 'browser_launch', gain: 3 as const }],
+      rerankState: { hasActivePage: false, networkEnabled: false, capturedRequestCount: 0 },
+    },
+    {
+      id: 'r-browser-launch-2',
+      query: 'launch chrome to analyze page',
+      topK: 10,
+      expectations: [{ tool: 'browser_launch', gain: 3 as const }],
+      rerankState: { hasActivePage: false, networkEnabled: false, capturedRequestCount: 0 },
+    },
+    // Network monitor boost: active page, no network → network_monitor boosted
+    {
+      id: 'r-network-monitor',
+      query: 'monitor network traffic',
+      topK: 10,
+      expectations: [{ tool: 'network_monitor', gain: 3 as const }],
+      rerankState: { hasActivePage: true, networkEnabled: false, capturedRequestCount: 0 },
+    },
+    {
+      id: 'r-network-monitor-2',
+      query: 'enable network capture',
+      topK: 10,
+      expectations: [{ tool: 'network_enable', gain: 3 as const }],
+      rerankState: { hasActivePage: true, networkEnabled: false, capturedRequestCount: 0 },
+    },
+    // Network get requests boost: active page, network enabled, has captured requests
+    {
+      id: 'r-network-get',
+      query: 'get captured network requests',
+      topK: 10,
+      expectations: [{ tool: 'network_get_requests', gain: 3 as const }],
+      rerankState: { hasActivePage: true, networkEnabled: true, capturedRequestCount: 5 },
+    },
+    // Stateless compute: boost compute tools, penalize interactive domains
+    {
+      id: 'r-stateless-decode',
+      query: 'decode base64 payload',
+      topK: 10,
+      expectations: [{ tool: 'binary_decode', gain: 3 as const }],
+      rerankState: { hasActivePage: false, networkEnabled: false, capturedRequestCount: 0 },
+    },
+    {
+      id: 'r-stateless-detect',
+      query: 'detect encoding format of bytes',
+      topK: 10,
+      expectations: [{ tool: 'binary_detect_format', gain: 3 as const }],
+      rerankState: { hasActivePage: false, networkEnabled: false, capturedRequestCount: 0 },
+    },
+  ];
+
+  // Engine dispatch: use full engine for rerank-state cases, fixture engine otherwise.
+  type EvalCaseExt = EvalCase & {
+    useFullEngine?: boolean;
+    rerankState?: { hasActivePage: boolean; networkEnabled: boolean; capturedRequestCount: number };
+    baseTier?: string;
+    visibleDomains?: string[];
+  };
+
+  let evalCases: EvalCaseExt[];
+  if (spec.dataset === 'search-quality') {
+    evalCases = lexicalCases as EvalCaseExt[];
+  } else if (spec.dataset === 'profile-tier') {
+    // Phase 3: both profile-tier cases + rerank-state cases to give rerank params signal
+    evalCases = [...profileCases, ...rerankStateCases] as EvalCaseExt[];
+  } else {
+    // Phase 4: rerank-state only
+    evalCases = rerankStateCases as EvalCaseExt[];
+  }
+
   const caseMetrics: CaseMetrics[] = [];
 
-  for (const tc of cases) {
-    const profile = (tc as { baseTier?: string }).baseTier as
-      | 'search'
-      | 'workflow'
-      | 'full'
-      | undefined;
-    const vd = (tc as { visibleDomains?: string[] }).visibleDomains;
+  for (const tc of evalCases) {
+    const actualEngine = tc.rerankState
+      ? fullEngine
+      : tc.useFullEngine
+        ? fullEngine
+        : fixtureEngine;
+    const profile = tc.baseTier as 'search' | 'workflow' | 'full' | undefined;
+    const vd = tc.visibleDomains;
     const visibleSet = vd ? new Set(vd) : undefined;
-    const results = await engine.search(tc.query, tc.topK, undefined, visibleSet, profile);
-    caseMetrics.push(evaluateCase(results, tc));
+    const results = await actualEngine.search(tc.query, tc.topK, undefined, visibleSet, profile);
+    const reranked = rerankResultsForContext(
+      results,
+      tc.query,
+      null,
+      tc.rerankState ?? { hasActivePage: false, networkEnabled: false, capturedRequestCount: 0 },
+    );
+    caseMetrics.push(evaluateCase(reranked, tc));
   }
 
   const metrics = aggregateMetrics(caseMetrics);
@@ -218,8 +315,8 @@ function aggregateMetrics(cms: CaseMetrics[]) {
 
 interface TrialSpec {
   trialId: string;
-  phase: 1 | 2 | 3;
-  dataset: 'search-quality' | 'profile-tier';
+  phase: 1 | 2 | 3 | 4;
+  dataset: 'search-quality' | 'profile-tier' | 'rerank-state';
   params: Record<string, number>;
   seed: number;
 }
@@ -273,7 +370,7 @@ function spawnWorker(spec: TrialSpec): Promise<TrialResult | null> {
   for (const [key, value] of Object.entries(spec.params)) {
     envOverrides[key] = String(value);
   }
-  envOverrides.__TRIAL_SPEC = JSON.stringify(spec);
+  envOverrides.TRIAL_SPEC_ENV = JSON.stringify(spec);
 
   return new Promise((res) => {
     const child = execFile(
@@ -363,7 +460,7 @@ async function runTrials(
 
 async function orchestrate(): Promise<void> {
   const options = parseOptions();
-  const outFile = resolve(options.outDir, 'trials.jsonl');
+  const outFile = pathResolve(options.outDir, 'trials.jsonl');
   await mkdir(options.outDir, { recursive: true });
 
   // Clear old results
@@ -372,8 +469,9 @@ async function orchestrate(): Promise<void> {
   const defs = await loadSearchSpace();
   const phase1Defs = getPhaseParams(defs, 1);
   const phase3Defs = getPhaseParams(defs, 3);
+  const phase4Defs = getPhaseParams(defs, 4);
   console.log(
-    `Search tuning: ${defs.length} parameters (${phase1Defs.length} lexical, ${phase3Defs.length} profile)`,
+    `Search tuning: ${defs.length} params (${phase1Defs.length} lexical, ${phase3Defs.length} profile, ${phase4Defs.length} rerank)`,
   );
   console.log(`Using ${options.concurrency} CPU cores, seed=${options.seed}`);
 
@@ -428,7 +526,8 @@ async function orchestrate(): Promise<void> {
     );
   }
 
-  // Phase 3: Profile penalty tuning
+  // Phase 3: Profile penalty tuning (profile-tier includes rerank-state cases
+  // so rerank params also get partial signal here)
   const p3Specs: TrialSpec[] = [];
   const p3Count = 80;
   for (let i = 0; i < p3Count; i++) {
@@ -450,8 +549,32 @@ async function orchestrate(): Promise<void> {
     (a, b) => b.metrics.objectiveScore - a.metrics.objectiveScore,
   )[0];
 
+  // Phase 4: Rerank-specific tuning — uses rerank-state dataset with varied
+  // runtime states to directly optimize rerank multipliers.
+  const bestPhase3Params = bestProfile?.params ?? bestLexical?.params ?? {};
+  const p4Specs: TrialSpec[] = [];
+  const p4Count = 60;
+  for (let i = 0; i < p4Count; i++) {
+    const rerankParams = sampleRandomParams(phase4Defs, options.seed + 30000 + i);
+    const merged = normalizeParams({
+      ...bestPhase3Params,
+      ...rerankParams,
+    } as TrialParams);
+    p4Specs.push({
+      trialId: `p4-${String(i).padStart(4, '0')}`,
+      phase: 4,
+      dataset: 'rerank-state',
+      params: merged as Record<string, number>,
+      seed: options.seed + 30000 + i,
+    });
+  }
+  const p4Results = await runTrials(p4Specs, options.concurrency, 'Phase 4 — Rerank', outFile);
+  const bestRerank = [...p4Results].toSorted(
+    (a, b) => b.metrics.objectiveScore - a.metrics.objectiveScore,
+  )[0];
+
   // ── Summary ──
-  const totalTrials = p1Results.length + p2Results.length + p3Results.length;
+  const totalTrials = p1Results.length + p2Results.length + p3Results.length + p4Results.length;
   console.log('\n═══ Optimization Summary ═══');
   console.log(`Total trials: ${totalTrials}`);
 
@@ -470,12 +593,18 @@ async function orchestrate(): Promise<void> {
       if (v !== undefined) console.log(`  ${k} = ${v}`);
     }
   }
+  if (bestRerank) {
+    console.log(`\nBest rerank (score=${bestRerank.metrics.objectiveScore.toFixed(4)}):`);
+    for (const [k, v] of Object.entries(bestRerank.params).toSorted()) {
+      if (v !== undefined) console.log(`  ${k} = ${v}`);
+    }
+  }
   console.log(`\nResults: ${outFile}`);
 
   // Auto-apply best params to .env
-  const best = bestProfile ?? bestLexical;
+  const best = bestRerank ?? bestProfile ?? bestLexical;
   if (best) {
-    const envPath = resolve(ROOT, '.env');
+    const envPath = pathResolve(ROOT, '.env');
     await applyToEnv(envPath, best.params, best.metrics.objectiveScore);
   }
 }
@@ -495,11 +624,23 @@ async function applyToEnv(
   const lines = existing.split('\n');
   const written = new Set<string>();
 
-  // Remove old search-tune header
-  const cleaned = lines.filter((l) => !l.startsWith('# [search-tune]'));
+  // Remove old search-tune header and deduplicate: keep last occurrence of each key
+  let cleaned = lines.filter((l) => !l.startsWith('# [search-tune]'));
+  const seenKeys = new Set<string>();
+  cleaned = cleaned
+    .toReversed()
+    .filter((line) => {
+      const m = line.match(/^(?:\s*)(SEARCH_[A-Z_]+|RERANK_[A-Z_]+)(?:\s*=\s*)/);
+      if (!m) return true;
+      const k = m[1]!;
+      if (seenKeys.has(k)) return false;
+      seenKeys.add(k);
+      return true;
+    })
+    .toReversed();
 
   const newLines = cleaned.map((line) => {
-    const match = line.match(/^(\s*)(SEARCH_[A-Z_]+)(\s*=\s*)(.*)$/);
+    const match = line.match(/^(\s*)(SEARCH_[A-Z_]+|RERANK_[A-Z_]+)(\s*=\s*)(.*)$/);
     if (!match) return line;
     const [, prefix, key, eq] = match;
     const val = params[key!];

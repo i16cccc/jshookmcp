@@ -1,6 +1,7 @@
 /**
  * Search tuning parameter space: whitelist, ranges, sampling, and env mapping.
  */
+/* eslint-disable no-underscore-dangle */
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -34,11 +35,22 @@ export const SEARCH_TUNE_PARAM_KEYS = [
   'SEARCH_VECTOR_LEARN_TOP_N',
   'SEARCH_RECENCY_MAX_BOOST',
   'SEARCH_WORKFLOW_DOMAIN_BOOST_MULTIPLIER',
+  'SEARCH_SCENE_KEYWORD_WEIGHT',
   // Phase 3: profile penalty
   'SEARCH_TIER_PENALTY',
   'SEARCH_TIER_PENALTY_SEARCH',
   'SEARCH_TIER_PENALTY_WORKFLOW',
   'SEARCH_TIER_PENALTY_FULL',
+  // Phase 4: rerank context multipliers
+  'RERANK_MAINTENANCE_PENALTY',
+  'RERANK_STATELESS_INTERACTIVE_PENALTY',
+  'RERANK_STATELESS_CORE_PENALTY',
+  'RERANK_STATELESS_COMPUTE_BOOST',
+  'RERANK_STATELESS_SPECIFIC_TOOL_BOOST',
+  'RERANK_BROWSER_LAUNCH_BOOST',
+  'RERANK_BROWSER_ATTACH_BOOST',
+  'RERANK_NETWORK_MONITOR_BOOST',
+  'RERANK_NETWORK_GET_REQUESTS_BOOST',
 ] as const;
 
 export type TunableParamKey = (typeof SEARCH_TUNE_PARAM_KEYS)[number];
@@ -49,7 +61,7 @@ export interface TunableParamDef {
   readonly min: number;
   readonly max: number;
   readonly step: number;
-  readonly phase: 1 | 2 | 3;
+  readonly phase: 1 | 2 | 3 | 4;
 }
 
 export type TrialParams = Readonly<Partial<Record<TunableParamKey, number>>>;
@@ -109,6 +121,7 @@ const PARAM_DEFS: readonly TunableParamDef[] = [
   { key: 'SEARCH_VECTOR_LEARN_DOWN', type: 'float', min: 0.01, max: 0.1, step: 0.01, phase: 1 },
   { key: 'SEARCH_VECTOR_LEARN_TOP_N', type: 'int', min: 2, max: 10, step: 1, phase: 1 },
   { key: 'SEARCH_RECENCY_MAX_BOOST', type: 'float', min: 0.0, max: 1.0, step: 0.05, phase: 1 },
+  { key: 'SEARCH_SCENE_KEYWORD_WEIGHT', type: 'float', min: 0.5, max: 5.0, step: 0.1, phase: 1 },
   {
     key: 'SEARCH_WORKFLOW_DOMAIN_BOOST_MULTIPLIER',
     type: 'float',
@@ -122,6 +135,44 @@ const PARAM_DEFS: readonly TunableParamDef[] = [
   { key: 'SEARCH_TIER_PENALTY_SEARCH', type: 'float', min: 0.1, max: 0.9, step: 0.02, phase: 3 },
   { key: 'SEARCH_TIER_PENALTY_WORKFLOW', type: 'float', min: 0.2, max: 0.95, step: 0.02, phase: 3 },
   { key: 'SEARCH_TIER_PENALTY_FULL', type: 'float', min: 0.6, max: 1.0, step: 0.02, phase: 3 },
+  // Phase 4: rerank context multipliers
+  { key: 'RERANK_MAINTENANCE_PENALTY', type: 'float', min: 0.01, max: 0.5, step: 0.01, phase: 4 },
+  {
+    key: 'RERANK_STATELESS_INTERACTIVE_PENALTY',
+    type: 'float',
+    min: 0.1,
+    max: 0.8,
+    step: 0.05,
+    phase: 4,
+  },
+  {
+    key: 'RERANK_STATELESS_CORE_PENALTY',
+    type: 'float',
+    min: 0.05,
+    max: 0.5,
+    step: 0.05,
+    phase: 4,
+  },
+  { key: 'RERANK_STATELESS_COMPUTE_BOOST', type: 'float', min: 1.0, max: 3.0, step: 0.1, phase: 4 },
+  {
+    key: 'RERANK_STATELESS_SPECIFIC_TOOL_BOOST',
+    type: 'float',
+    min: 1.0,
+    max: 2.5,
+    step: 0.05,
+    phase: 4,
+  },
+  { key: 'RERANK_BROWSER_LAUNCH_BOOST', type: 'float', min: 1.0, max: 2.5, step: 0.05, phase: 4 },
+  { key: 'RERANK_BROWSER_ATTACH_BOOST', type: 'float', min: 1.0, max: 2.0, step: 0.05, phase: 4 },
+  { key: 'RERANK_NETWORK_MONITOR_BOOST', type: 'float', min: 1.0, max: 2.5, step: 0.05, phase: 4 },
+  {
+    key: 'RERANK_NETWORK_GET_REQUESTS_BOOST',
+    type: 'float',
+    min: 1.0,
+    max: 2.5,
+    step: 0.05,
+    phase: 4,
+  },
 ] as const;
 
 // ── public API ──
